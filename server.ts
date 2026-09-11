@@ -11,6 +11,7 @@ dotenv.config();
 
 const app = express();
 const PORT = 3000;
+const SERVER_START_TIME = Date.now();
 
 app.use(express.json({ limit: "50mb" }));
 
@@ -68,6 +69,8 @@ interface StoredUser {
   notes: any[];
   classes: any[];
   settings?: any;
+  role?: 'owner' | 'admin' | 'vip' | 'user';
+  status?: 'active' | 'suspended';
 }
 
 const ACCOUNTS_FILE = path.join(process.cwd(), "cloud_accounts.json");
@@ -806,50 +809,161 @@ app.post("/api/email/send-note", async (req, res) => {
 });
 
 // ==========================================
-// Secret Admin Dashboard Endpoints
+// Platform State: Announcements & Maintenance
 // ==========================================
 
+let platformAnnouncement = {
+  id: "announcement_1",
+  message: "Welcome to Kairo Voice Notes OS! High-fidelity AI transcription and live soundscapes are active.",
+  type: "info" as "info" | "warning" | "alert" | "success",
+  active: false,
+  updatedAt: new Date().toISOString(),
+  createdBy: "admin",
+};
+
+let maintenanceMode = {
+  enabled: false,
+  message: "Kairo OS is temporarily undergoing scheduled cloud maintenance. Notes will resume momentarily!",
+};
+
+interface AuditEntry {
+  id: string;
+  timestamp: string;
+  action: string;
+  details: string;
+  actor: string;
+}
+
+const auditLogs: AuditEntry[] = [
+  {
+    id: "boot",
+    timestamp: new Date().toISOString(),
+    action: "SERVER_INITIALIZED",
+    details: "Kairo OS Server and Cloud Accounts engine booted on port 3000.",
+    actor: "System",
+  },
+];
+
+function logAuditEvent(action: string, details: string, actor: string = "Admin") {
+  auditLogs.unshift({
+    id: "log_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+    timestamp: new Date().toISOString(),
+    action,
+    details,
+    actor,
+  });
+  if (auditLogs.length > 200) auditLogs.pop();
+}
+
+// Public Platform Status (Announcements & Maintenance)
+app.get("/api/platform/status", (_req, res) => {
+  res.json({
+    announcement: platformAnnouncement,
+    maintenance: maintenanceMode,
+  });
+});
+
+// ==========================================
+// Secret Admin & Owner Dashboard Endpoints
+// ==========================================
+
+// Primary Admin password: Kairo820
 const VALID_ADMIN_KEYS = new Set([
-  (process.env.ADMIN_KEY || "kairo-admin-2026").trim().toLowerCase(),
+  "kairo820",
   "kairo-admin-2026",
   "kaironotescompany",
   "kairo2026",
   "kairo-master-key",
+  (process.env.ADMIN_KEY || "Kairo820").trim().toLowerCase(),
 ]);
 
-function isAuthorizedAdmin(req: express.Request): boolean {
-  const headerKey = req.headers["x-admin-key"];
-  const queryKey = req.query.key;
-  const bodyKey = req.body?.key;
-  const provided = (
-    typeof headerKey === "string" ? headerKey :
-    typeof queryKey === "string" ? queryKey :
-    typeof bodyKey === "string" ? bodyKey : ""
-  ).trim().toLowerCase();
+// Secret Owner code: Gizmo820
+const VALID_OWNER_KEYS = new Set([
+  "gizmo820",
+  (process.env.OWNER_KEY || "Gizmo820").trim().toLowerCase(),
+]);
 
-  return Boolean(provided && VALID_ADMIN_KEYS.has(provided));
+function extractKey(req: express.Request, names: string[]): string {
+  for (const name of names) {
+    const headerVal = req.headers[name.toLowerCase()];
+    if (typeof headerVal === "string" && headerVal.trim()) return headerVal.trim().toLowerCase();
+    const queryVal = req.query[name];
+    if (typeof queryVal === "string" && queryVal.trim()) return queryVal.trim().toLowerCase();
+    const bodyVal = req.body?.[name];
+    if (typeof bodyVal === "string" && bodyVal.trim()) return bodyVal.trim().toLowerCase();
+  }
+  return "";
 }
 
-// Verify Admin Passkey
+function isAuthorizedOwner(req: express.Request): boolean {
+  const provided = extractKey(req, ["x-owner-key", "ownerKey", "ownerCode", "x-admin-key", "key"]);
+  return Boolean(provided && VALID_OWNER_KEYS.has(provided));
+}
+
+function isAuthorizedAdmin(req: express.Request): boolean {
+  if (isAuthorizedOwner(req)) return true;
+  const provided = extractKey(req, ["x-admin-key", "key", "adminKey"]);
+  return Boolean(provided && (VALID_ADMIN_KEYS.has(provided) || VALID_OWNER_KEYS.has(provided)));
+}
+
+// Verify Admin / Owner Passkey
 app.post("/api/admin/verify", (req, res) => {
-  if (isAuthorizedAdmin(req)) {
+  if (isAuthorizedOwner(req)) {
+    logAuditEvent("OWNER_AUTH", "Owner authorized directly via Gizmo820 passcode.", "Owner");
     return res.json({
       success: true,
+      isOwner: true,
+      role: "owner",
+      message: "👑 Welcome Supreme Owner! Master root privileges granted.",
+    });
+  }
+
+  if (isAuthorizedAdmin(req)) {
+    logAuditEvent("ADMIN_AUTH", "Administrator authorized via Kairo820 passkey.", "Admin");
+    return res.json({
+      success: true,
+      isOwner: false,
+      role: "admin",
       message: "Admin credentials verified successfully.",
     });
   }
+
+  logAuditEvent("AUTH_FAILED", "Invalid passkey attempt rejected.", "Unknown");
   return res.status(401).json({
     success: false,
     error: "Invalid Admin Passkey. Access denied.",
   });
 });
 
-// Fetch full platform data (accounts, emails, notes, classes, settings)
+// Elevate existing admin session to Owner using code Gizmo820
+app.post("/api/admin/elevate-owner", (req, res) => {
+  const { ownerCode } = req.body || {};
+  const code = (typeof ownerCode === "string" ? ownerCode : "").trim().toLowerCase();
+
+  if (VALID_OWNER_KEYS.has(code)) {
+    logAuditEvent("OWNER_ELEVATION", "Administrator successfully elevated to Owner Mode via code Gizmo820.", "Owner");
+    return res.json({
+      success: true,
+      isOwner: true,
+      role: "owner",
+      message: "👑 Access Elevated: Welcome to the Supreme Owner Console!",
+    });
+  }
+
+  logAuditEvent("ELEVATION_FAILED", `Failed elevation attempt with code: ${String(ownerCode).slice(0, 10)}`, "Admin");
+  return res.status(403).json({
+    success: false,
+    error: "Incorrect Owner Code. Hint: Secret code required.",
+  });
+});
+
+// Fetch full platform data (accounts, emails, notes, classes, settings, metrics, audit logs)
 app.get("/api/admin/data", (req, res) => {
   if (!isAuthorizedAdmin(req)) {
     return res.status(401).json({ error: "Unauthorized: Invalid or missing Admin Key." });
   }
 
+  const isOwner = isAuthorizedOwner(req);
   loadAccounts();
 
   const userList = Object.values(usersDatabase);
@@ -885,6 +999,8 @@ app.get("/api/admin/data", (req, res) => {
       name: u.name,
       email: u.email,
       createdAt: u.createdAt,
+      role: u.role || "user",
+      status: u.status || "active",
       notesCount: userNotes.length,
       classesCount: userClasses.length,
       notes: userNotes,
@@ -903,17 +1019,108 @@ app.get("/api/admin/data", (req, res) => {
     lastActive = flattenedRecentNotes[0].createdAt;
   }
 
+  const uptimeSec = Math.floor((Date.now() - SERVER_START_TIME) / 1000);
+  const uptimeStr = `${Math.floor(uptimeSec / 3600)}h ${Math.floor((uptimeSec % 3600) / 60)}m ${uptimeSec % 60}s`;
+
+  let dbSize = 0;
+  try {
+    if (fs.existsSync(ACCOUNTS_FILE)) {
+      dbSize = fs.statSync(ACCOUNTS_FILE).size;
+    }
+  } catch {
+    // ignore
+  }
+
   return res.json({
     success: true,
+    isOwner,
+    currentRole: isOwner ? "owner" : "admin",
     stats: {
       totalAccounts: safeAccounts.length,
       totalNotes,
       totalClasses,
       totalWords,
       lastActive,
+      activeSessions: activeTokens.size,
+      estimatedStorageBytes: dbSize,
+    },
+    metrics: {
+      uptime: uptimeStr,
+      uptimeSeconds: uptimeSec,
+      memoryMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      nodeVersion: process.version,
+      activeSessions: activeTokens.size,
+      geminiReady: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0),
+      smtpReady: Boolean(SENDER_EMAIL && SENDER_PASS),
+      dbSizeBytes: dbSize,
     },
     accounts: safeAccounts,
-    recentNotes: flattenedRecentNotes.slice(0, 100),
+    recentNotes: flattenedRecentNotes.slice(0, 150),
+    announcement: platformAnnouncement,
+    maintenance: maintenanceMode,
+    auditLogs: auditLogs.slice(0, 60),
+  });
+});
+
+// Update or toggle Global Announcement
+app.post("/api/admin/announcement", (req, res) => {
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { message, type, active } = req.body || {};
+  if (typeof message === "string") platformAnnouncement.message = message;
+  if (type && ["info", "warning", "alert", "success"].includes(type)) {
+    platformAnnouncement.type = type;
+  }
+  if (typeof active === "boolean") {
+    platformAnnouncement.active = active;
+  }
+  platformAnnouncement.updatedAt = new Date().toISOString();
+  platformAnnouncement.createdBy = isAuthorizedOwner(req) ? "Owner" : "Admin";
+
+  logAuditEvent(
+    platformAnnouncement.active ? "ANNOUNCEMENT_PUBLISHED" : "ANNOUNCEMENT_DISABLED",
+    `Announcement: "${platformAnnouncement.message.slice(0, 40)}..." (${platformAnnouncement.type})`,
+    isAuthorizedOwner(req) ? "Owner" : "Admin"
+  );
+
+  return res.json({
+    success: true,
+    announcement: platformAnnouncement,
+    message: platformAnnouncement.active ? "Announcement published to all users." : "Announcement deactivated.",
+  });
+});
+
+// Reset user password (Admin & Owner)
+app.post("/api/admin/user/reset-password", (req, res) => {
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { userId, newPassword } = req.body || {};
+  if (!userId || !usersDatabase[userId]) {
+    return res.status(404).json({ error: "User account not found." });
+  }
+
+  const generated = "KairoPass" + Math.floor(1000 + Math.random() * 9000);
+  const passToUse = (typeof newPassword === "string" && newPassword.trim().length >= 4) ? newPassword.trim() : generated;
+
+  const { hash, salt } = hashPassword(passToUse);
+  usersDatabase[userId].passwordHash = hash;
+  usersDatabase[userId].salt = salt;
+  saveAccounts();
+
+  logAuditEvent(
+    "USER_PASSWORD_RESET",
+    `Password reset for user ${usersDatabase[userId].email} (${usersDatabase[userId].name}).`,
+    isAuthorizedOwner(req) ? "Owner" : "Admin"
+  );
+
+  return res.json({
+    success: true,
+    message: `Password updated successfully! Temporary password: ${passToUse}`,
+    temporaryPassword: passToUse,
   });
 });
 
@@ -928,13 +1135,206 @@ app.delete("/api/admin/account/:id", (req, res) => {
     return res.status(404).json({ error: "Account not found." });
   }
 
+  const userEmail = usersDatabase[id].email;
   delete usersDatabase[id];
   saveAccounts();
 
+  logAuditEvent("ACCOUNT_DELETED", `Permanently removed account: ${userEmail}`, isAuthorizedOwner(req) ? "Owner" : "Admin");
+
   return res.json({
     success: true,
-    message: "Account deleted permanently from cloud storage.",
+    message: `Account ${userEmail} deleted permanently from cloud storage.`,
   });
+});
+
+// ==========================================
+// Exclusive Owner Endpoints (Code: Gizmo820)
+// ==========================================
+
+// Change user role and status (Owner privilege)
+app.post("/api/admin/user/role", (req, res) => {
+  if (!isAuthorizedOwner(req)) {
+    return res.status(403).json({ error: "Owner privilege required (Code: Gizmo820)." });
+  }
+
+  const { userId, role, status } = req.body || {};
+  if (!userId || !usersDatabase[userId]) {
+    return res.status(404).json({ error: "User account not found." });
+  }
+
+  const target = usersDatabase[userId];
+  if (role && ["owner", "admin", "vip", "user"].includes(role)) {
+    target.role = role;
+  }
+  if (status && ["active", "suspended"].includes(status)) {
+    target.status = status;
+  }
+  saveAccounts();
+
+  logAuditEvent(
+    "USER_ROLE_UPDATED",
+    `Updated ${target.email} to Role: ${target.role || 'user'}, Status: ${target.status || 'active'}`,
+    "Owner"
+  );
+
+  return res.json({
+    success: true,
+    message: `Account updated to role ${target.role || 'user'} (${target.status || 'active'}).`,
+    user: {
+      id: target.id,
+      email: target.email,
+      name: target.name,
+      role: target.role,
+      status: target.status,
+    },
+  });
+});
+
+// Toggle Platform Maintenance Mode (Owner privilege)
+app.post("/api/admin/maintenance", (req, res) => {
+  if (!isAuthorizedOwner(req)) {
+    return res.status(403).json({ error: "Owner privilege required (Code: Gizmo820)." });
+  }
+
+  const { enabled, message } = req.body || {};
+  if (typeof enabled === "boolean") maintenanceMode.enabled = enabled;
+  if (typeof message === "string" && message.trim()) maintenanceMode.message = message.trim();
+
+  logAuditEvent(
+    maintenanceMode.enabled ? "MAINTENANCE_ENABLED" : "MAINTENANCE_DISABLED",
+    `Maintenance Mode set to: ${maintenanceMode.enabled ? "ACTIVE (" + maintenanceMode.message + ")" : "DISABLED"}`,
+    "Owner"
+  );
+
+  return res.json({
+    success: true,
+    maintenance: maintenanceMode,
+    message: maintenanceMode.enabled ? "Emergency maintenance mode engaged." : "Platform maintenance mode disabled.",
+  });
+});
+
+// Purge empty accounts with 0 notes and 0 classes (Owner privilege)
+app.post("/api/admin/purge-empty", (req, res) => {
+  if (!isAuthorizedOwner(req)) {
+    return res.status(403).json({ error: "Owner privilege required (Code: Gizmo820)." });
+  }
+
+  loadAccounts();
+  const keys = Object.keys(usersDatabase);
+  let purgedCount = 0;
+
+  for (const key of keys) {
+    const user = usersDatabase[key];
+    const notesCount = (user.notes || []).length;
+    const classesCount = (user.classes || []).length;
+    if (notesCount === 0 && classesCount === 0) {
+      delete usersDatabase[key];
+      purgedCount++;
+    }
+  }
+
+  if (purgedCount > 0) {
+    saveAccounts();
+  }
+
+  logAuditEvent("PURGE_EMPTY_ACCOUNTS", `Cleaned ${purgedCount} unused/empty accounts.`, "Owner");
+
+  return res.json({
+    success: true,
+    purgedCount,
+    message: `Cleaned ${purgedCount} empty account(s) with 0 notes and 0 classes.`,
+  });
+});
+
+// Inject note / study guide into any user account (Owner privilege)
+app.post("/api/admin/inject-note", (req, res) => {
+  if (!isAuthorizedOwner(req)) {
+    return res.status(403).json({ error: "Owner privilege required (Code: Gizmo820)." });
+  }
+
+  const { userId, title, transcript, className } = req.body || {};
+  if (!userId || !usersDatabase[userId]) {
+    return res.status(404).json({ error: "Target user account not found." });
+  }
+
+  const user = usersDatabase[userId];
+  const newNote = {
+    id: "injected_" + Date.now(),
+    title: (title || "Master System Study Guide").trim(),
+    transcript: (transcript || "Audio transcribed and verified by Supreme Owner.").trim(),
+    classId: user.classes?.[0]?.id || "general",
+    createdAt: new Date().toISOString(),
+    duration: 120,
+    tags: ["Owner Injected", className || "General"],
+    summary: {
+      summary: "This note was directly injected into your cloud account by the System Administrator.",
+      keyPoints: ["System-verified transcript", "Instant cloud synchronization"],
+      actionItems: ["Review injected study material"],
+      suggestedQuestions: ["How can I best review this topic?"],
+    },
+  };
+
+  user.notes = [newNote, ...(user.notes || [])];
+  saveAccounts();
+
+  logAuditEvent(
+    "NOTE_INJECTED",
+    `Injected note "${newNote.title}" into account ${user.email}`,
+    "Owner"
+  );
+
+  return res.json({
+    success: true,
+    message: `Note "${newNote.title}" successfully injected into ${user.name}'s account!`,
+    note: newNote,
+  });
+});
+
+// Test Gemini AI Connectivity & Latency (Owner & Admin diagnostic tool)
+app.post("/api/admin/test-ai", async (req, res) => {
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const startTime = Date.now();
+  const { model, prompt } = req.body || {};
+  const selectedModel = model === "gemini-2.5-pro" ? "gemini-2.5-pro" : "gemini-2.5-flash";
+  const testPrompt = prompt || "Reply with a one-sentence confirmation that the Kairo Gemini AI voice engine is healthy and operational.";
+
+  try {
+    const ai = getGeminiClient();
+    if (!ai) {
+      return res.status(500).json({
+        success: false,
+        error: "GEMINI_API_KEY is not configured on the server.",
+      });
+    }
+
+    const response = await ai.models.generateContent({
+      model: selectedModel,
+      contents: testPrompt,
+    });
+
+    const latencyMs = Date.now() - startTime;
+    const replyText = response?.text || "No text returned.";
+
+    logAuditEvent("AI_DIAGNOSTIC_TEST", `Model ${selectedModel} tested successfully (${latencyMs}ms)`, isAuthorizedOwner(req) ? "Owner" : "Admin");
+
+    return res.json({
+      success: true,
+      model: selectedModel,
+      latencyMs,
+      reply: replyText,
+    });
+  } catch (err: any) {
+    const latencyMs = Date.now() - startTime;
+    return res.status(500).json({
+      success: false,
+      model: selectedModel,
+      latencyMs,
+      error: err?.message || "AI diagnostic generation failed.",
+    });
+  }
 });
 
 // Export entire database backup
@@ -950,6 +1350,29 @@ app.get("/api/admin/export", (req, res) => {
     `attachment; filename="kairo_backup_${new Date().toISOString().slice(0, 10)}.json"`
   );
   return res.send(JSON.stringify(usersDatabase, null, 2));
+});
+
+// Restore database from JSON backup (Owner privilege)
+app.post("/api/admin/restore-database", (req, res) => {
+  if (!isAuthorizedOwner(req)) {
+    return res.status(403).json({ error: "Owner privilege required (Code: Gizmo820)." });
+  }
+
+  const { backupData } = req.body || {};
+  if (!backupData || typeof backupData !== "object") {
+    return res.status(400).json({ error: "Invalid backup data format. Expected JSON object of accounts." });
+  }
+
+  usersDatabase = backupData;
+  saveAccounts();
+
+  logAuditEvent("DATABASE_RESTORED", `Cloud accounts restored with ${Object.keys(backupData).length} accounts.`, "Owner");
+
+  return res.json({
+    success: true,
+    message: `Database successfully restored with ${Object.keys(backupData).length} user accounts.`,
+    count: Object.keys(backupData).length,
+  });
 });
 
 async function startServer() {

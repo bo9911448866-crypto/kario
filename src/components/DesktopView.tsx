@@ -28,6 +28,8 @@ import {
   CustomThemeConfig,
   UserAccount,
   GeminiApiStatus,
+  PlatformAnnouncement,
+  MaintenanceModeConfig,
 } from '../types';
 import { DesktopWindowFrame } from './DesktopWindowFrame';
 import { ClassFolderWindow } from './ClassFolderWindow';
@@ -36,6 +38,7 @@ import { AdminDashboardModal } from './AdminDashboardModal';
 import { NoteCard } from './NoteCard';
 import { AmbientAudioBar } from './AmbientAudioBar';
 import { AdminService } from '../services/AdminService';
+import { Crown, Megaphone, AlertCircle } from 'lucide-react';
 
 interface DesktopViewProps {
   classes: ClassItem[];
@@ -113,6 +116,22 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
   const [adminPasskeyInput, setAdminPasskeyInput] = useState('');
   const [adminKeyError, setAdminKeyError] = useState<string | null>(null);
   const [isVerifyingAdmin, setIsVerifyingAdmin] = useState(false);
+
+  // Platform broadcast announcement & maintenance status
+  const [announcement, setAnnouncement] = useState<PlatformAnnouncement | null>(null);
+  const [maintenance, setMaintenance] = useState<MaintenanceModeConfig | null>(null);
+  const [dismissedAnnouncement, setDismissedAnnouncement] = useState(false);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      const res = await AdminService.fetchPlatformStatus();
+      if (res.announcement) setAnnouncement(res.announcement);
+      if (res.maintenance) setMaintenance(res.maintenance);
+    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 25000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const updateTime = () => {
@@ -207,6 +226,9 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
 
     if (result.success) {
       AdminService.saveKey(adminPasskeyInput.trim());
+      if (result.isOwner) {
+        AdminService.saveOwnerCode(adminPasskeyInput.trim());
+      }
       setShowAdminKeyPrompt(false);
       setAdminPasskeyInput('');
       onOpenAdminModal();
@@ -427,6 +449,45 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           </div>
         </div>
       </header>
+
+      {/* 1.5 PLATFORM BROADCAST & MAINTENANCE BANNERS */}
+      {maintenance?.enabled && (
+        <div className="w-full bg-amber-950/90 border-b border-amber-500/40 px-4 py-1.5 flex items-center justify-between text-xs text-amber-200 z-30 shadow-md">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-amber-400 shrink-0" />
+            <span className="font-bold">System Maintenance in Progress:</span>
+            <span>{maintenance.message || 'The platform is undergoing scheduled updates.'}</span>
+          </div>
+          <span className="text-[10px] font-mono text-amber-400/80 uppercase">Maintenance Mode</span>
+        </div>
+      )}
+
+      {announcement?.active && !dismissedAnnouncement && (
+        <div
+          className={`w-full border-b px-4 py-1.5 flex items-center justify-between text-xs z-30 shadow-md transition-all ${
+            announcement.type === 'alert'
+              ? 'bg-rose-950/90 border-rose-600/50 text-rose-200'
+              : announcement.type === 'warning'
+              ? 'bg-amber-950/90 border-amber-600/50 text-amber-200'
+              : announcement.type === 'success'
+              ? 'bg-emerald-950/90 border-emerald-600/50 text-emerald-200'
+              : 'bg-purple-950/90 border-purple-600/50 text-purple-200'
+          }`}
+        >
+          <div className="flex items-center gap-2 truncate">
+            <Megaphone className="h-3.5 w-3.5 shrink-0 animate-bounce" />
+            <span className="font-bold shrink-0">Announcement:</span>
+            <span className="truncate">{announcement.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDismissedAnnouncement(true)}
+            className="text-xs opacity-70 hover:opacity-100 cursor-pointer ml-2"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* 2. DESKTOP WORKSPACE (WALLPAPER & DESKTOP ICONS GRID) */}
       <main
@@ -752,36 +813,54 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
 
       {/* 4. PASSKEY UNLOCK MODAL (IF USER CLICKS ADMIN APP WITHOUT KEY) */}
       {showAdminKeyPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm p-6 rounded-2xl bg-[#140e2b] border border-purple-900 shadow-2xl space-y-4 text-purple-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-sm p-6 rounded-3xl bg-[#140e2b] border border-purple-800 shadow-2xl space-y-4 text-purple-100">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-purple-950 border border-purple-700 text-purple-400">
+              <div className="p-2.5 rounded-2xl bg-purple-950/80 border border-purple-700/60 text-purple-400">
                 <Shield className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Unlock Admin Portal</h3>
-                <p className="text-[11px] text-purple-300/80">Enter Master Passkey</p>
+                <h3 className="text-sm font-bold text-white">Unlock Admin & Owner Portal</h3>
+                <p className="text-[11px] text-purple-300/80">
+                  Enter Admin Passkey or Owner Master Code
+                </p>
               </div>
             </div>
 
             {adminKeyError && (
-              <p className="text-xs text-rose-300 p-2 rounded-lg bg-rose-950/60 border border-rose-900">
+              <p className="text-xs text-rose-300 p-2.5 rounded-xl bg-rose-950/70 border border-rose-900">
                 {adminKeyError}
               </p>
             )}
 
             <form onSubmit={handleVerifyPasskey} className="space-y-3">
-              <input
-                type="password"
-                required
-                autoFocus
-                value={adminPasskeyInput}
-                onChange={(e) => setAdminPasskeyInput(e.target.value)}
-                placeholder="Enter admin passkey..."
-                className="w-full px-3 py-2 rounded-xl text-xs bg-purple-950/50 border border-purple-900 text-purple-100 placeholder:text-purple-400/50 focus:outline-none focus:ring-1 focus:ring-purple-500"
-              />
+              <div>
+                <input
+                  type="password"
+                  required
+                  autoFocus
+                  value={adminPasskeyInput}
+                  onChange={(e) => setAdminPasskeyInput(e.target.value)}
+                  placeholder="Kairo820 (Admin) or Gizmo820 (Owner)..."
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-purple-950/60 border border-purple-800 text-purple-100 placeholder:text-purple-400/50 font-mono focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[10px] text-slate-400 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span>Admin Passkey:</span>
+                  <code className="text-purple-300 font-mono font-bold">Kairo820</code>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-amber-300 flex items-center gap-1">
+                    <Crown className="h-3 w-3" />
+                    <span>Owner Code:</span>
+                  </span>
+                  <code className="text-amber-300 font-mono font-bold">Gizmo820</code>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowAdminKeyPrompt(false)}
@@ -792,9 +871,9 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                 <button
                   type="submit"
                   disabled={isVerifyingAdmin}
-                  className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  {isVerifyingAdmin ? 'Verifying...' : 'Unlock'}
+                  {isVerifyingAdmin ? 'Verifying...' : 'Unlock Portal'}
                 </button>
               </div>
             </form>

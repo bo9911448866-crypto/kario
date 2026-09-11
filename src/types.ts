@@ -124,6 +124,8 @@ export interface AdminUserAccount {
   notes: VoiceNote[];
   classes: ClassItem[];
   settings?: any;
+  role?: 'owner' | 'admin' | 'vip' | 'user';
+  status?: 'active' | 'suspended';
 }
 
 export interface AdminStats {
@@ -132,6 +134,41 @@ export interface AdminStats {
   totalClasses: number;
   totalWords: number;
   lastActive?: string;
+  activeSessions?: number;
+  estimatedStorageBytes?: number;
+}
+
+export interface AdminSystemMetrics {
+  uptime: string;
+  uptimeSeconds: number;
+  memoryMb: number;
+  nodeVersion: string;
+  activeSessions: number;
+  geminiReady: boolean;
+  smtpReady: boolean;
+  dbSizeBytes: number;
+}
+
+export interface PlatformAnnouncement {
+  id: string;
+  message: string;
+  type: 'info' | 'warning' | 'alert' | 'success';
+  active: boolean;
+  updatedAt: string;
+  createdBy: string;
+}
+
+export interface MaintenanceModeConfig {
+  enabled: boolean;
+  message: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  action: string;
+  details: string;
+  actor: string;
 }
 
 export interface AdminRecentNote extends VoiceNote {
@@ -144,4 +181,10 @@ export interface AdminData {
   stats: AdminStats;
   accounts: AdminUserAccount[];
   recentNotes: AdminRecentNote[];
+  metrics?: AdminSystemMetrics;
+  announcement?: PlatformAnnouncement;
+  maintenance?: MaintenanceModeConfig;
+  auditLogs?: AuditLogEntry[];
+  isOwner?: boolean;
+  currentRole?: 'admin' | 'owner';
 }
