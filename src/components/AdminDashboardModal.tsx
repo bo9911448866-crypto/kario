@@ -110,8 +110,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ isOpen
     if (res.success && res.data) {
       if (shouldSave && rememberKey) {
         if (trimmedKey) AdminService.saveKey(trimmedKey);
-        if (trimmedOwner || res.data.isOwner) {
-          AdminService.saveOwnerCode(trimmedOwner || 'Gizmo820');
+        if (trimmedOwner) {
+          AdminService.saveOwnerCode(trimmedOwner);
         }
       }
       setIsUnlocked(true);
@@ -160,7 +160,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ isOpen
       setElevateInput('');
       await reloadData();
     } else {
-      setElevateError(res.error || 'Invalid Owner Code. Please check code Gizmo820.');
+      setElevateError(res.error || 'Invalid Owner Code. Please check and try again.');
     }
   };
 
@@ -471,7 +471,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ isOpen
               <div className="relative">
                 <input
                   type={showKeyInput ? 'text' : 'password'}
-                  placeholder="Enter Passkey (Kairo820 or Gizmo820)..."
+                  placeholder="Enter administrator passkey..."
                   value={adminKey}
                   onChange={(e) => setAdminKey(e.target.value)}
                   autoFocus
@@ -527,15 +527,6 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ isOpen
                   <span className="text-slate-300">Admin Passkey:</span>
                   <code className="text-purple-300 font-mono font-bold bg-purple-950/50 px-2 py-0.5 rounded border border-purple-800/40">
                     Kairo820
-                  </code>
-                </div>
-                <div className="flex items-center justify-between pt-1 border-t border-slate-900">
-                  <span className="text-amber-300 flex items-center gap-1">
-                    <Crown className="h-3 w-3" />
-                    <span>Owner Secret Code:</span>
-                  </span>
-                  <code className="text-amber-300 font-mono font-bold bg-amber-950/50 px-2 py-0.5 rounded border border-amber-500/40">
-                    Gizmo820
                   </code>
                 </div>
               </div>
@@ -640,7 +631,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ isOpen
                   }`}
                 >
                   <Crown className="h-3.5 w-3.5 text-amber-400" />
-                  <span>{isOwner ? '👑 Owner Console' : 'Owner Panel (Gizmo820)'}</span>
+                  <span>{isOwner ? '👑 Owner Console' : 'Owner Console (Restricted)'}</span>
                 </button>
 
                 {/* 6. Raw Database */}
@@ -947,11 +938,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ isOpen
             >
               <div className="flex items-center gap-3">
                 <span>
-                  Admin Password: <code className="text-purple-300 font-mono font-bold">Kairo820</code>
-                </span>
-                <span>&bull;</span>
-                <span className="text-amber-300">
-                  Owner Code: <code className="text-amber-300 font-mono font-bold">Gizmo820</code>
+                  Admin Session Active &bull; Owner Mode Restricted
                 </span>
               </div>
               <div className="text-slate-500">
@@ -981,7 +968,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ isOpen
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              Enter the master Owner Code (<code className="text-amber-300 font-bold">Gizmo820</code>) to upgrade this administrator session to the Owner Console with root-level platform powers.
+              Enter the master Owner Code to upgrade this administrator session to the Owner Console with root-level platform powers.
             </p>
 
             {elevateError && (
@@ -996,10 +983,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ isOpen
                   Owner Secret Code
                 </label>
                 <input
-                  type="text"
+                  type="password"
                   required
                   autoFocus
-                  placeholder="Gizmo820..."
+                  placeholder="Enter secret owner code..."
                   value={elevateInput}
                   onChange={(e) => setElevateInput(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-amber-500/40 text-sm font-mono text-amber-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400"

@@ -198,9 +198,9 @@ export const OwnerConsoleTab: React.FC<OwnerConsoleTabProps> = ({
             </label>
             <div className="relative">
               <input
-                type="text"
+                type="password"
                 required
-                placeholder="Enter owner code (Gizmo820)..."
+                placeholder="Enter secret owner access code..."
                 value={elevationCode}
                 onChange={(e) => setElevationCode(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-amber-500/40 text-amber-200 placeholder-slate-500 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -230,12 +230,6 @@ export const OwnerConsoleTab: React.FC<OwnerConsoleTabProps> = ({
               </>
             )}
           </button>
-
-          <div className="p-3 rounded-xl bg-amber-950/20 border border-amber-500/20 text-center">
-            <span className="text-[11px] text-amber-300/80 font-mono">
-              Owner Passcode: <span className="font-bold text-amber-300">Gizmo820</span>
-            </span>
-          </div>
         </form>
       </div>
     );
@@ -255,7 +249,7 @@ export const OwnerConsoleTab: React.FC<OwnerConsoleTabProps> = ({
                 Supreme Owner Console (Root Mode)
               </h3>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase">
-                Code: Gizmo820
+                Root Authority
               </span>
             </div>
             <p className="text-xs text-amber-200/80 mt-0.5">

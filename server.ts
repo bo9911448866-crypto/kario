@@ -1148,13 +1148,13 @@ app.delete("/api/admin/account/:id", (req, res) => {
 });
 
 // ==========================================
-// Exclusive Owner Endpoints (Code: Gizmo820)
+// Exclusive Owner Endpoints
 // ==========================================
 
 // Change user role and status (Owner privilege)
 app.post("/api/admin/user/role", (req, res) => {
   if (!isAuthorizedOwner(req)) {
-    return res.status(403).json({ error: "Owner privilege required (Code: Gizmo820)." });
+    return res.status(403).json({ error: "Owner privilege required." });
   }
 
   const { userId, role, status } = req.body || {};
@@ -1193,7 +1193,7 @@ app.post("/api/admin/user/role", (req, res) => {
 // Toggle Platform Maintenance Mode (Owner privilege)
 app.post("/api/admin/maintenance", (req, res) => {
   if (!isAuthorizedOwner(req)) {
-    return res.status(403).json({ error: "Owner privilege required (Code: Gizmo820)." });
+    return res.status(403).json({ error: "Owner privilege required." });
   }
 
   const { enabled, message } = req.body || {};
@@ -1216,7 +1216,7 @@ app.post("/api/admin/maintenance", (req, res) => {
 // Purge empty accounts with 0 notes and 0 classes (Owner privilege)
 app.post("/api/admin/purge-empty", (req, res) => {
   if (!isAuthorizedOwner(req)) {
-    return res.status(403).json({ error: "Owner privilege required (Code: Gizmo820)." });
+    return res.status(403).json({ error: "Owner privilege required." });
   }
 
   loadAccounts();
@@ -1249,7 +1249,7 @@ app.post("/api/admin/purge-empty", (req, res) => {
 // Inject note / study guide into any user account (Owner privilege)
 app.post("/api/admin/inject-note", (req, res) => {
   if (!isAuthorizedOwner(req)) {
-    return res.status(403).json({ error: "Owner privilege required (Code: Gizmo820)." });
+    return res.status(403).json({ error: "Owner privilege required." });
   }
 
   const { userId, title, transcript, className } = req.body || {};
@@ -1355,7 +1355,7 @@ app.get("/api/admin/export", (req, res) => {
 // Restore database from JSON backup (Owner privilege)
 app.post("/api/admin/restore-database", (req, res) => {
   if (!isAuthorizedOwner(req)) {
-    return res.status(403).json({ error: "Owner privilege required (Code: Gizmo820)." });
+    return res.status(403).json({ error: "Owner privilege required." });
   }
 
   const { backupData } = req.body || {};

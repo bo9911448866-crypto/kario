@@ -841,22 +841,15 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                   autoFocus
                   value={adminPasskeyInput}
                   onChange={(e) => setAdminPasskeyInput(e.target.value)}
-                  placeholder="Kairo820 (Admin) or Gizmo820 (Owner)..."
+                  placeholder="Enter administrator passkey..."
                   className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-purple-950/60 border border-purple-800 text-purple-100 placeholder:text-purple-400/50 font-mono focus:outline-none focus:ring-1 focus:ring-purple-500"
                 />
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[10px] text-slate-400 space-y-1">
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[10px] text-slate-400">
                 <div className="flex items-center justify-between">
                   <span>Admin Passkey:</span>
                   <code className="text-purple-300 font-mono font-bold">Kairo820</code>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-amber-300 flex items-center gap-1">
-                    <Crown className="h-3 w-3" />
-                    <span>Owner Code:</span>
-                  </span>
-                  <code className="text-amber-300 font-mono font-bold">Gizmo820</code>
                 </div>
               </div>
 
