@@ -113,3 +113,35 @@ export interface CloudSyncStatus {
   isSyncing: boolean;
   error?: string;
 }
+
+export interface AdminUserAccount {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  notesCount: number;
+  classesCount: number;
+  notes: VoiceNote[];
+  classes: ClassItem[];
+  settings?: any;
+}
+
+export interface AdminStats {
+  totalAccounts: number;
+  totalNotes: number;
+  totalClasses: number;
+  totalWords: number;
+  lastActive?: string;
+}
+
+export interface AdminRecentNote extends VoiceNote {
+  userEmail: string;
+  userName: string;
+  userId: string;
+}
+
+export interface AdminData {
+  stats: AdminStats;
+  accounts: AdminUserAccount[];
+  recentNotes: AdminRecentNote[];
+}

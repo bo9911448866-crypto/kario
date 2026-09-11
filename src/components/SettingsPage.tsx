@@ -51,6 +51,7 @@ interface SettingsPageProps {
   onClassesUpdated: (classes: ClassItem[]) => void;
   onBackToWorkspace: () => void;
   defaultTab?: 'account' | 'email' | 'gemini' | 'themes';
+  onOpenAdmin?: () => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -62,6 +63,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onClassesUpdated,
   onBackToWorkspace,
   defaultTab = 'account',
+  onOpenAdmin,
 }) => {
   const [activeTab, setActiveTab] = useState<'account' | 'email' | 'gemini' | 'themes'>(defaultTab);
 
@@ -378,6 +380,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <Palette className="h-4 w-4 shrink-0" />
               <span>Themes & Readability</span>
             </button>
+
+            {onOpenAdmin && (
+              <div className="pt-3 mt-3 border-t border-slate-200/80 dark:border-purple-950/60">
+                <button
+                  type="button"
+                  onClick={onOpenAdmin}
+                  className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-500 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-transparent hover:border-purple-200 dark:hover:border-purple-900/50 transition-all cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Shield className="h-3.5 w-3.5 text-purple-500" />
+                    <span>Master Admin Portal</span>
+                  </div>
+                  <Lock className="h-3 w-3 text-slate-400" />
+                </button>
+              </div>
+            )}
           </nav>
 
           {/* Tab Content Panel */}

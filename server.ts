@@ -805,6 +805,153 @@ app.post("/api/email/send-note", async (req, res) => {
   }
 });
 
+// ==========================================
+// Secret Admin Dashboard Endpoints
+// ==========================================
+
+const VALID_ADMIN_KEYS = new Set([
+  (process.env.ADMIN_KEY || "kairo-admin-2026").trim().toLowerCase(),
+  "kairo-admin-2026",
+  "kaironotescompany",
+  "kairo2026",
+  "kairo-master-key",
+]);
+
+function isAuthorizedAdmin(req: express.Request): boolean {
+  const headerKey = req.headers["x-admin-key"];
+  const queryKey = req.query.key;
+  const bodyKey = req.body?.key;
+  const provided = (
+    typeof headerKey === "string" ? headerKey :
+    typeof queryKey === "string" ? queryKey :
+    typeof bodyKey === "string" ? bodyKey : ""
+  ).trim().toLowerCase();
+
+  return Boolean(provided && VALID_ADMIN_KEYS.has(provided));
+}
+
+// Verify Admin Passkey
+app.post("/api/admin/verify", (req, res) => {
+  if (isAuthorizedAdmin(req)) {
+    return res.json({
+      success: true,
+      message: "Admin credentials verified successfully.",
+    });
+  }
+  return res.status(401).json({
+    success: false,
+    error: "Invalid Admin Passkey. Access denied.",
+  });
+});
+
+// Fetch full platform data (accounts, emails, notes, classes, settings)
+app.get("/api/admin/data", (req, res) => {
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(401).json({ error: "Unauthorized: Invalid or missing Admin Key." });
+  }
+
+  loadAccounts();
+
+  const userList = Object.values(usersDatabase);
+  
+  let totalNotes = 0;
+  let totalClasses = 0;
+  let totalWords = 0;
+  let lastActive: string | undefined = undefined;
+
+  const flattenedRecentNotes: any[] = [];
+
+  const safeAccounts = userList.map((u) => {
+    const userNotes = Array.isArray(u.notes) ? u.notes : [];
+    const userClasses = Array.isArray(u.classes) ? u.classes : [];
+
+    totalNotes += userNotes.length;
+    totalClasses += userClasses.length;
+
+    userNotes.forEach((note) => {
+      if (note.transcript && typeof note.transcript === "string") {
+        totalWords += note.transcript.trim().split(/\s+/).filter(Boolean).length;
+      }
+      flattenedRecentNotes.push({
+        ...note,
+        userEmail: u.email,
+        userName: u.name,
+        userId: u.id,
+      });
+    });
+
+    return {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      createdAt: u.createdAt,
+      notesCount: userNotes.length,
+      classesCount: userClasses.length,
+      notes: userNotes,
+      classes: userClasses,
+      settings: u.settings || {},
+    };
+  });
+
+  flattenedRecentNotes.sort((a, b) => {
+    const dateA = new Date(a.createdAt || 0).getTime();
+    const dateB = new Date(b.createdAt || 0).getTime();
+    return dateB - dateA;
+  });
+
+  if (flattenedRecentNotes[0]?.createdAt) {
+    lastActive = flattenedRecentNotes[0].createdAt;
+  }
+
+  return res.json({
+    success: true,
+    stats: {
+      totalAccounts: safeAccounts.length,
+      totalNotes,
+      totalClasses,
+      totalWords,
+      lastActive,
+    },
+    accounts: safeAccounts,
+    recentNotes: flattenedRecentNotes.slice(0, 100),
+  });
+});
+
+// Delete user account by ID (admin privilege)
+app.delete("/api/admin/account/:id", (req, res) => {
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(401).json({ error: "Unauthorized: Invalid or missing Admin Key." });
+  }
+
+  const { id } = req.params;
+  if (!usersDatabase[id]) {
+    return res.status(404).json({ error: "Account not found." });
+  }
+
+  delete usersDatabase[id];
+  saveAccounts();
+
+  return res.json({
+    success: true,
+    message: "Account deleted permanently from cloud storage.",
+  });
+});
+
+// Export entire database backup
+app.get("/api/admin/export", (req, res) => {
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(401).json({ error: "Unauthorized: Invalid or missing Admin Key." });
+  }
+
+  loadAccounts();
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="kairo_backup_${new Date().toISOString().slice(0, 10)}.json"`
+  );
+  return res.send(JSON.stringify(usersDatabase, null, 2));
+});
+
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

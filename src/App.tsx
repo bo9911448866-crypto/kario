@@ -37,12 +37,19 @@ import { SettingsModal } from './components/SettingsModal';
 import { SettingsPage } from './components/SettingsPage';
 import { AmbientAudioBar } from './components/AmbientAudioBar';
 import { ZenOverlay } from './components/ZenOverlay';
+import { AdminDashboardModal } from './components/AdminDashboardModal';
 
 export default function App() {
   // Navigation view: 'workspace' or 'settings'
   const [currentView, setCurrentView] = useState<'workspace' | 'settings'>('workspace');
   const [settingsTab, setSettingsTab] = useState<'account' | 'email' | 'gemini' | 'themes'>('account');
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => AuthService.getUser());
+
+  // Secret Admin Portal state
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(
+    () => typeof window !== 'undefined' && window.location.hash === '#admin'
+  );
+  const [secretClickCount, setSecretClickCount] = useState<number>(0);
 
   // Theme & Appearance configuration state
   const [themeConfig, setThemeConfig] = useState<CustomThemeConfig>(() =>
@@ -115,6 +122,48 @@ export default function App() {
 
     checkApi();
   }, []);
+
+  // Secret Admin Access Triggers:
+  // 1. URL Hash: #admin
+  // 2. Keyboard shortcut: Ctrl+Shift+A or Cmd+Shift+A
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === '#admin') {
+        setIsAdminModalOpen(true);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        setIsAdminModalOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('keydown', handleKeyDown);
+
+    if (window.location.hash === '#admin') {
+      setIsAdminModalOpen(true);
+    }
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  const handleSecretFooterClick = () => {
+    setSecretClickCount((prev) => {
+      const next = prev + 1;
+      if (next >= 5) {
+        setIsAdminModalOpen(true);
+        return 0;
+      }
+      return next;
+    });
+    setTimeout(() => setSecretClickCount(0), 2500);
+  };
 
   const checkApi = async () => {
     const status = await GeminiService.checkStatus();
@@ -395,6 +444,7 @@ export default function App() {
               onClassesUpdated={setClasses}
               onBackToWorkspace={() => setCurrentView('workspace')}
               defaultTab={settingsTab}
+              onOpenAdmin={() => setIsAdminModalOpen(true)}
             />
           ) : (
             /* Main Voice Notes Workspace */
@@ -596,6 +646,22 @@ export default function App() {
                   </div>
                 )}
               </main>
+
+              {/* Discreet Footer with Secret Admin Trigger */}
+              <footer className="max-w-6xl w-full mx-auto px-4 py-8 text-center text-xs text-slate-400 dark:text-purple-400/40 select-none border-t border-slate-200/50 dark:border-purple-950/40 mt-8">
+                <div className="flex items-center justify-center gap-2">
+                  <span>Kairo AI Voice Notes & Academic Summaries</span>
+                  <span>&bull;</span>
+                  <button
+                    type="button"
+                    onClick={handleSecretFooterClick}
+                    title="System Info"
+                    className="hover:text-slate-600 dark:hover:text-purple-300 transition-colors cursor-default"
+                  >
+                    v2.5
+                  </button>
+                </div>
+              </footer>
             </>
           )}
         </>
@@ -648,6 +714,17 @@ export default function App() {
         config={themeConfig}
         onUpdateConfig={setThemeConfig}
         onReplayIntro={() => setShowIntro(true)}
+      />
+
+      {/* Secret Master Admin Dashboard Modal */}
+      <AdminDashboardModal
+        isOpen={isAdminModalOpen}
+        onClose={() => {
+          setIsAdminModalOpen(false);
+          if (typeof window !== 'undefined' && window.location.hash === '#admin') {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
+        }}
       />
     </div>
   );
