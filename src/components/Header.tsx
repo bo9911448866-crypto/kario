@@ -12,6 +12,7 @@ import {
   Cloud,
   FileText,
   User,
+  Monitor,
 } from 'lucide-react';
 import { GeminiApiStatus, UserAccount } from '../types';
 
@@ -28,6 +29,7 @@ interface HeaderProps {
   currentView?: 'workspace' | 'settings';
   onNavigateView?: (view: 'workspace' | 'settings') => void;
   user?: UserAccount | null;
+  onToggleDesktopView?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -43,6 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentView = 'workspace',
   onNavigateView,
   user,
+  onToggleDesktopView,
 }) => {
   return (
     <header
@@ -107,6 +110,16 @@ export const Header: React.FC<HeaderProps> = ({
                 <Settings className="h-3.5 w-3.5" />
                 <span>Settings</span>
               </button>
+              {onToggleDesktopView && (
+                <button
+                  type="button"
+                  onClick={onToggleDesktopView}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-purple-600 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/60 transition-all cursor-pointer"
+                >
+                  <Monitor className="h-3.5 w-3.5" />
+                  <span>Desktop OS</span>
+                </button>
+              )}
             </div>
           )}
         </div>

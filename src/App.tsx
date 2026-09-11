@@ -38,12 +38,35 @@ import { SettingsPage } from './components/SettingsPage';
 import { AmbientAudioBar } from './components/AmbientAudioBar';
 import { ZenOverlay } from './components/ZenOverlay';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
+import { DesktopLockScreen } from './components/DesktopLockScreen';
+import { DesktopView } from './components/DesktopView';
+import { AdminService } from './services/AdminService';
 
 export default function App() {
   // Navigation view: 'workspace' or 'settings'
   const [currentView, setCurrentView] = useState<'workspace' | 'settings'>('workspace');
   const [settingsTab, setSettingsTab] = useState<'account' | 'email' | 'gemini' | 'themes'>('account');
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => AuthService.getUser());
+
+  // Desktop OS environment vs classic layout view
+  const [viewStyle, setViewStyle] = useState<'desktop' | 'classic'>(() => {
+    try {
+      return (localStorage.getItem('kairo_view_style') as 'desktop' | 'classic') || 'desktop';
+    } catch {
+      return 'desktop';
+    }
+  });
+
+  // Lockscreen gate on application opening
+  const [isDesktopLocked, setIsDesktopLocked] = useState<boolean>(true);
+
+  // Recorder default class ID when launched from folder
+  const [recorderDefaultClassId, setRecorderDefaultClassId] = useState<string | undefined>(undefined);
+
+  // Admin Portal unlocked
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(() =>
+    Boolean(AdminService.getSavedKey())
+  );
 
   // Secret Admin Portal state
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(
@@ -325,6 +348,57 @@ export default function App() {
     }
   };
 
+  const handleDeleteClass = (id: string) => {
+    const res = StorageService.deleteClass(id);
+    setClasses(res.classes);
+    setNotes(res.notes);
+    if (selectedClassId === id) {
+      setSelectedClassId(null);
+    }
+    if (AuthService.isAuthenticated()) {
+      AuthService.syncToCloud(res.notes, res.classes, { themeConfig }).catch((e) =>
+        console.warn('Cloud sync error:', e)
+      );
+    }
+  };
+
+  const handleOpenRecorder = (defaultClassId?: string) => {
+    setRecorderDefaultClassId(defaultClassId);
+    setIsRecorderOpen(true);
+  };
+
+  const toggleViewStyle = () => {
+    setViewStyle((prev) => {
+      const next = prev === 'desktop' ? 'classic' : 'desktop';
+      try {
+        localStorage.setItem('kairo_view_style', next);
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleLoginSuccess = (
+    user: UserAccount,
+    data?: { notes: VoiceNote[]; classes: ClassItem[]; settings: any }
+  ) => {
+    setCurrentUser(user);
+    if (data?.notes && data.notes.length > 0) {
+      setNotes(data.notes);
+      StorageService.saveNotes(data.notes);
+    }
+    if (data?.classes && data.classes.length > 0) {
+      setClasses(data.classes);
+      StorageService.saveClasses(data.classes);
+    }
+    setIsDesktopLocked(false);
+  };
+
+  const handleLogout = async () => {
+    await AuthService.logout();
+    setCurrentUser(null);
+    setIsDesktopLocked(true);
+  };
+
   // Calculate note counts per class
   const classNoteCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -403,6 +477,17 @@ export default function App() {
       {/* Intro Animation */}
       {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
 
+      {/* Lock Screen Gate (Account System on App Open) */}
+      {isDesktopLocked && (
+        <DesktopLockScreen
+          currentUser={currentUser}
+          onLoginSuccess={handleLoginSuccess}
+          onContinueAsGuest={() => setIsDesktopLocked(false)}
+          onUnlockExisting={() => setIsDesktopLocked(false)}
+          onLogout={handleLogout}
+        />
+      )}
+
       {/* Zen Screensaver View (Hides UI so background and music take over) */}
       <ZenOverlay
         isOpen={Boolean(themeConfig.zenMode)}
@@ -414,24 +499,50 @@ export default function App() {
       {/* Main Workspace UI (Hidden when in Zen Mode) */}
       {!themeConfig.zenMode && (
         <>
-          {/* Header with Navigation and Cloud status */}
-          <Header
-            theme={themeConfig.mode}
-            onToggleTheme={toggleTheme}
-            apiStatus={apiStatus}
-            onOpenApiKeyModal={() => {
-              setSettingsTab('gemini');
-              setCurrentView('settings');
-            }}
-            onOpenRecorder={() => setIsRecorderOpen(true)}
-            onReplayIntro={() => setShowIntro(true)}
-            isFireMode={themeConfig.fireIntensity !== 'off'}
-            onToggleFireMode={toggleFireMode}
-            onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
-            currentView={currentView}
-            onNavigateView={(view) => setCurrentView(view)}
-            user={currentUser}
-          />
+          {viewStyle === 'desktop' ? (
+            <DesktopView
+              classes={classes}
+              notes={notes}
+              themeConfig={themeConfig}
+              onUpdateThemeConfig={setThemeConfig}
+              currentUser={currentUser}
+              apiStatus={apiStatus}
+              onOpenRecorder={handleOpenRecorder}
+              onOpenClassModal={() => setIsClassModalOpen(true)}
+              onDeleteClass={handleDeleteClass}
+              onSummarizeNote={handleSummarizeNote}
+              onDeleteNote={handleDeleteNote}
+              onMoveNoteToClass={handleMoveNoteToClass}
+              onEditNote={(n) => setEditingNote(n)}
+              onLockDesktop={() => setIsDesktopLocked(true)}
+              onLogout={handleLogout}
+              onToggleClassicMode={toggleViewStyle}
+              isAdminUnlocked={isAdminUnlocked || Boolean(AdminService.getSavedKey())}
+              onOpenAdminModal={() => setIsAdminModalOpen(true)}
+              onNotesUpdated={setNotes}
+              onClassesUpdated={setClasses}
+            />
+          ) : (
+            <>
+              {/* Header with Navigation and Cloud status */}
+              <Header
+                theme={themeConfig.mode}
+                onToggleTheme={toggleTheme}
+                apiStatus={apiStatus}
+                onOpenApiKeyModal={() => {
+                  setSettingsTab('gemini');
+                  setCurrentView('settings');
+                }}
+                onOpenRecorder={() => handleOpenRecorder()}
+                onReplayIntro={() => setShowIntro(true)}
+                isFireMode={themeConfig.fireIntensity !== 'off'}
+                onToggleFireMode={toggleFireMode}
+                onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+                currentView={currentView}
+                onNavigateView={(view) => setCurrentView(view)}
+                user={currentUser}
+                onToggleDesktopView={toggleViewStyle}
+              />
 
           {currentView === 'settings' ? (
             /* Dedicated Settings View: Cloud Accounts, Email Delivery, Gemini Key, and Themes */
@@ -666,14 +777,19 @@ export default function App() {
           )}
         </>
       )}
+    </>
+  )}
 
       {/* Audio Recorder Modal */}
       {isRecorderOpen && (
         <AudioRecorder
           classes={classes}
-          defaultClassId={selectedClassId || classes[0]?.id}
+          defaultClassId={recorderDefaultClassId || selectedClassId || classes[0]?.id}
           onSaveNote={handleSaveNewNote}
-          onClose={() => setIsRecorderOpen(false)}
+          onClose={() => {
+            setIsRecorderOpen(false);
+            setRecorderDefaultClassId(undefined);
+          }}
         />
       )}
 
