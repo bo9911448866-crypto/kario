@@ -9,6 +9,14 @@ export interface ClassItem {
   createdAt: string;
 }
 
+export interface NoteAnalysisResult {
+  title: string;
+  cleanedTranscript: string;
+  classId: string | null;
+  detectedTopics: string[];
+  grammarNotes?: string;
+}
+
 export interface NoteSummary {
   summary: string;
   keyPoints: string[];
@@ -18,6 +26,8 @@ export interface NoteSummary {
   title?: string;
   cleanedTranscript?: string;
   classId?: string | null;
+  detectedTopics?: string[];
+  grammarNotes?: string;
 }
 
 export interface VoiceNote {
@@ -32,6 +42,9 @@ export interface VoiceNote {
   updatedAt: string;
   summary?: NoteSummary;
   isSummarizing?: boolean;
+  isAnalyzing?: boolean;
+  detectedTopics?: string[];
+  grammarNotes?: string;
   error?: string;
 }
 
@@ -43,6 +56,7 @@ export interface GeminiApiStatus {
 export type SortOrder = 'newest' | 'oldest' | 'duration' | 'title';
 
 export type PresetThemeId =
+  | 'monochrome-minimalist'
   | 'obsidian-flame'
   | 'midnight-cyberpunk'
   | 'cosmic-nebula'

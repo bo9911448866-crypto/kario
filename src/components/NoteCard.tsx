@@ -128,8 +128,8 @@ export const NoteCard: React.FC<NoteCardProps> = ({
       id={`note-card-${note.id}`}
       className={`rounded-2xl border transition-all overflow-hidden flex flex-col group ${
         cardStyle === 'frosted'
-          ? 'border-white/20 dark:border-purple-900/50 bg-white/95 dark:bg-[#120d24]/95 backdrop-blur-xl shadow-lg hover:shadow-xl hover:shadow-purple-900/20'
-          : 'border-slate-200 dark:border-purple-950/80 bg-white dark:bg-[#120d24] shadow-md dark:shadow-2xl dark:shadow-black/70 hover:shadow-xl hover:shadow-purple-900/20'
+          ? 'border-white/20 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl shadow-lg hover:shadow-xl'
+          : 'border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-md dark:shadow-2xl dark:shadow-black/70 hover:shadow-xl'
       }`}
     >
       {/* Note Header */}
@@ -188,9 +188,36 @@ export const NoteCard: React.FC<NoteCardProps> = ({
         </div>
 
         {/* Title */}
-        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight leading-snug">
+        <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-snug">
           {note.title}
         </h3>
+
+        {/* AI Detected Topics Badges */}
+        {((note.detectedTopics && note.detectedTopics.length > 0) ||
+          (note.summary?.detectedTopics && note.summary.detectedTopics.length > 0)) && (
+          <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
+            <Tag className="h-3 w-3 text-zinc-400 dark:text-zinc-500 shrink-0" />
+            {(note.detectedTopics?.length
+              ? note.detectedTopics
+              : note.summary?.detectedTopics || []
+            ).map((topic, idx) => (
+              <span
+                key={idx}
+                className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700"
+              >
+                {topic}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Grammar Polish note preview if available */}
+        {(note.grammarNotes || note.summary?.grammarNotes) && (
+          <div className="mt-2 text-[11px] text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-950/60 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <span className="font-semibold text-zinc-800 dark:text-zinc-200">Grammar Polish: </span>
+            {note.grammarNotes || note.summary?.grammarNotes}
+          </div>
+        )}
       </div>
 
       {/* Audio Player (if recorded audio is present) */}
@@ -261,11 +288,11 @@ export const NoteCard: React.FC<NoteCardProps> = ({
 
         {/* AI Summarization Section */}
         {note.summary ? (
-          <div className="rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/70 dark:bg-[#0c0e1e] p-4 space-y-3 shadow-xs">
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-950/80 p-4 space-y-3 shadow-xs">
             {/* AI Summary Header */}
-            <div className="flex items-center justify-between border-b border-indigo-100/80 dark:border-indigo-900/50 pb-2">
-              <div className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-300 font-semibold text-xs">
-                <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <div className="flex items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800/80 pb-2">
+              <div className="flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100 font-semibold text-xs">
+                <Sparkles className="h-4 w-4 text-zinc-800 dark:text-zinc-200" />
                 <span>AI Structured Summary</span>
               </div>
               <div className="flex items-center gap-2">
@@ -277,7 +304,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
                       'summary'
                     )
                   }
-                  className="text-[11px] font-medium text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 transition-colors cursor-pointer"
+                  className="text-[11px] font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 flex items-center gap-1 transition-colors cursor-pointer"
                 >
                   {copiedSection === 'summary' ? (
                     <>
@@ -296,7 +323,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
                   type="button"
                   onClick={() => onSummarize(note)}
                   disabled={note.isSummarizing}
-                  className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   title="Re-generate AI summary"
                 >
                   <RefreshCw className={`h-3 w-3 ${note.isSummarizing ? 'animate-spin' : ''}`} />
@@ -306,24 +333,24 @@ export const NoteCard: React.FC<NoteCardProps> = ({
             </div>
 
             {/* Executive Overview */}
-            <p className="text-xs leading-relaxed text-slate-800 dark:text-slate-200">
+            <p className="text-xs leading-relaxed text-zinc-800 dark:text-zinc-200">
               {note.summary.summary}
             </p>
 
             {/* Key Bullet Points */}
             {note.summary.keyPoints && note.summary.keyPoints.length > 0 && (
               <div className="space-y-1.5 pt-1">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                  <ListOrdered className="h-3.5 w-3.5 text-indigo-500" />
+                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                  <ListOrdered className="h-3.5 w-3.5 text-zinc-500" />
                   <span>Key Points</span>
                 </div>
                 <ul className="space-y-1 pl-1">
                   {note.summary.keyPoints.map((point, idx) => (
                     <li
                       key={idx}
-                      className="text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2"
+                      className="text-xs text-zinc-700 dark:text-zinc-300 flex items-start gap-2"
                     >
-                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 mt-1.5 shrink-0" />
                       <span className="leading-snug">{point}</span>
                     </li>
                   ))}
@@ -334,17 +361,17 @@ export const NoteCard: React.FC<NoteCardProps> = ({
             {/* Action Items / Study Targets */}
             {note.summary.actionItems && note.summary.actionItems.length > 0 && (
               <div className="space-y-1.5 pt-1">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                  <CheckSquare className="h-3.5 w-3.5 text-purple-500" />
+                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                  <CheckSquare className="h-3.5 w-3.5 text-zinc-500" />
                   <span>Action Items & Exam Topics</span>
                 </div>
                 <ul className="space-y-1 pl-1">
                   {note.summary.actionItems.map((item, idx) => (
                     <li
                       key={idx}
-                      className="text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2"
+                      className="text-xs text-zinc-700 dark:text-zinc-300 flex items-start gap-2"
                     >
-                      <span className="h-1.5 w-1.5 rounded-full bg-purple-500 mt-1.5 shrink-0" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-zinc-900 dark:bg-white mt-1.5 shrink-0" />
                       <span className="leading-snug">{item}</span>
                     </li>
                   ))}
@@ -354,12 +381,12 @@ export const NoteCard: React.FC<NoteCardProps> = ({
 
             {/* AI Tags */}
             {note.summary.tags && note.summary.tags.length > 0 && (
-              <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-indigo-100/60 dark:border-indigo-900/40">
-                <Tag className="h-3 w-3 text-slate-400" />
+              <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                <Tag className="h-3 w-3 text-zinc-400" />
                 {note.summary.tags.map((tag, idx) => (
                   <span
                     key={idx}
-                    className="text-[10px] px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700"
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 font-medium"
                   >
                     #{tag}
                   </span>
@@ -369,9 +396,9 @@ export const NoteCard: React.FC<NoteCardProps> = ({
           </div>
         ) : (
           /* Summarize CTA Banner */
-          <div className="rounded-xl border border-dashed border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/80 dark:bg-slate-950 p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs text-indigo-900 dark:text-indigo-200">
-              <Sparkles className="h-4 w-4 text-indigo-600 shrink-0" />
+          <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-950 p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs text-zinc-800 dark:text-zinc-300">
+              <Sparkles className="h-4 w-4 text-zinc-600 dark:text-zinc-400 shrink-0" />
               <span>No AI summary yet. Generate structured bullet points with Gemini.</span>
             </div>
             <button
@@ -379,7 +406,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
               type="button"
               onClick={() => onSummarize(note)}
               disabled={note.isSummarizing}
-              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-semibold shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
             >
               {note.isSummarizing ? (
                 <>
@@ -417,12 +444,12 @@ export const NoteCard: React.FC<NoteCardProps> = ({
       </div>
 
       {/* Card Footer Actions */}
-      <div className="px-5 py-3 border-t border-slate-100 dark:border-purple-950/60 bg-slate-50/80 dark:bg-[#0c0818] flex flex-wrap items-center justify-between gap-2">
+      <div className="px-5 py-3 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/80 dark:bg-zinc-950 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
             type="button"
             onClick={() => onEdit(note)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-purple-900/30 text-xs font-medium transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-xs font-medium transition-colors cursor-pointer"
           >
             <Edit3 className="h-3.5 w-3.5" />
             <span>Edit Note</span>
@@ -432,7 +459,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
             type="button"
             onClick={handleSendEmail}
             disabled={isSendingEmail}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
             title="Email this note transcript & summary via SMTP"
           >
             {isSendingEmail ? (
@@ -451,7 +478,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
           <button
             type="button"
             onClick={handleOpenMailto}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/50 text-xs font-medium transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-xs font-medium transition-colors cursor-pointer"
             title="Open note in your email app (Gmail, Outlook, Apple Mail)"
           >
             <ExternalLink className="h-3.5 w-3.5" />

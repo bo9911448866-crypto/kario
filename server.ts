@@ -262,9 +262,11 @@ app.post("/api/gemini/analyze", async (req, res) => {
     const classesList = Array.isArray(classes) && classes.length > 0 ? classes.map((c: any) => `ID: ${c.id} | Name: ${c.name}`).join("\n") : "None";
 
     const prompt = `Analyze this spoken voice note transcript.
-1. Correct the grammar, punctuation, and formatting to make it highly readable without losing any of the original meaning.
-2. Generate a concise, descriptive title based on the topics.
-3. Suggest the most appropriate class ID from the provided list, or output null if it doesn't fit any existing class.
+1. Detect all key academic topics, subjects, and concepts covered.
+2. Correct the grammar, punctuation, sentence structures, and formatting to make it clean, articulate, and highly readable without losing any meaning.
+3. Identify what grammar, punctuation, or clarity improvements were made.
+4. Generate a concise, descriptive, and accurately named academic title based on the topics.
+5. Identify the best matching class ID from the provided list, or output null if it doesn't fit any existing class.
 
 Existing Classes:
 ${classesList}
@@ -279,16 +281,18 @@ ${text}
     const response = await generateWithFallback(ai, candidateModels, {
       contents: prompt,
       config: {
-        systemInstruction: "You are an expert academic note processor. Fix grammar, generate a title, and map to the most appropriate class ID.",
+        systemInstruction: "You are an expert academic note processor. You analyze spoken notes, detect topics, fix grammar and punctuation, generate an accurate title, and assign notes to the right class.",
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            title: { type: Type.STRING, description: "A concise, descriptive title for the note (max 6 words)." },
-            cleanedTranscript: { type: Type.STRING, description: "The original transcript with corrected grammar, punctuation, and clear paragraph formatting." },
-            classId: { type: Type.STRING, description: "The exact ID of the best matching class from the provided list, or null if no match.", nullable: true }
+            title: { type: Type.STRING, description: "A concise, descriptive, professional title for the note (max 6 words)." },
+            cleanedTranscript: { type: Type.STRING, description: "The transcript with corrected grammar, punctuation, and clear paragraph formatting." },
+            classId: { type: Type.STRING, description: "The exact ID of the best matching class from the provided list, or null if no match.", nullable: true },
+            detectedTopics: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 to 6 detected core topics or subject areas." },
+            grammarNotes: { type: Type.STRING, description: "Brief summary of grammar, punctuation, and clarity improvements applied." }
           },
-          required: ["title", "cleanedTranscript"]
+          required: ["title", "cleanedTranscript", "detectedTopics", "grammarNotes"]
         }
       }
     });
@@ -303,7 +307,9 @@ ${text}
       success: true,
       title: parsedData.title,
       cleanedTranscript: parsedData.cleanedTranscript,
-      classId: parsedData.classId || null
+      classId: parsedData.classId || null,
+      detectedTopics: Array.isArray(parsedData.detectedTopics) ? parsedData.detectedTopics : [],
+      grammarNotes: parsedData.grammarNotes || "Grammar, capitalization, and punctuation polished."
     });
 
   } catch (err: any) {
@@ -348,10 +354,12 @@ Available Classes (for mapping):
 ${classesList}
 
 Please do the following:
-1. Produce a concise, high-yield structured summary suitable for students and learners.
-2. Correct the grammar, punctuation, and formatting of the transcript to make it highly readable without losing any of the original meaning.
-3. Suggest a concise, descriptive title for the note based on the topics.
-4. Suggest the most appropriate class ID from the provided list, or output null if it doesn't fit any existing class.`;
+1. Detect all key academic topics and concepts covered in the transcript.
+2. Produce a concise, high-yield structured summary suitable for students and learners.
+3. Correct the grammar, punctuation, and formatting of the transcript to make it highly readable without losing any original meaning.
+4. Identify the grammar and readability improvements made.
+5. Generate an accurate, descriptive title for the note based on the topics.
+6. Suggest the most appropriate class ID from the provided list, or output null if it doesn't fit any existing class.`;
 
     const candidateModels = ["gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-flash-latest"];
 
@@ -359,7 +367,7 @@ Please do the following:
       contents: prompt,
       config: {
         systemInstruction:
-          "You are an expert academic note summarizer. Create clear, factual, high-retention summaries with structured key bullet points, takeaways/action items, and relevant subject tags. Additionally, clean up the transcript, generate a smart title, and map it to the correct class.",
+          "You are an expert academic note summarizer. Create clear, factual, high-retention summaries with structured key bullet points, takeaways/action items, detected topics, and relevant subject tags. Additionally, polish grammar and punctuation, generate an accurate title, and assign to the correct class.",
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -388,6 +396,17 @@ Please do the following:
                 type: Type.STRING,
               },
               description: "3 to 6 high-level academic keywords or topical tags.",
+            },
+            detectedTopics: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.STRING,
+              },
+              description: "3 to 5 core topics identified in the material.",
+            },
+            grammarNotes: {
+              type: Type.STRING,
+              description: "Brief note explaining what grammar, spelling, or punctuation corrections were applied.",
             },
             title: {
               type: Type.STRING,
@@ -423,6 +442,8 @@ Please do the following:
         keyPoints: [],
         actionItems: [],
         tags: ["Error"],
+        detectedTopics: [],
+        grammarNotes: "",
         title: title || "Untitled Note",
         cleanedTranscript: text,
         classId: null
@@ -1006,7 +1027,7 @@ function isAuthorizedAdmin(req: express.Request): boolean {
 // Verify Admin / Owner Passkey
 app.post("/api/admin/verify", (req, res) => {
   if (isAuthorizedOwner(req)) {
-    logAuditEvent("OWNER_AUTH", "Owner authorized directly via Gizmo820 passcode.", "Owner");
+    logAuditEvent("OWNER_AUTH", "Owner authorized directly via passcode verification.", "Owner");
     return res.json({
       success: true,
       isOwner: true,
@@ -1016,7 +1037,7 @@ app.post("/api/admin/verify", (req, res) => {
   }
 
   if (isAuthorizedAdmin(req)) {
-    logAuditEvent("ADMIN_AUTH", "Administrator authorized via Kairo820 passkey.", "Admin");
+    logAuditEvent("ADMIN_AUTH", "Administrator authorized via passkey verification.", "Admin");
     return res.json({
       success: true,
       isOwner: false,
@@ -1038,7 +1059,7 @@ app.post("/api/admin/elevate-owner", (req, res) => {
   const code = (typeof ownerCode === "string" ? ownerCode : "").trim().toLowerCase();
 
   if (VALID_OWNER_KEYS.has(code)) {
-    logAuditEvent("OWNER_ELEVATION", "Administrator successfully elevated to Owner Mode via code Gizmo820.", "Owner");
+    logAuditEvent("OWNER_ELEVATION", "Administrator successfully elevated to Owner Mode.", "Owner");
     return res.json({
       success: true,
       isOwner: true,

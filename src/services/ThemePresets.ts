@@ -11,6 +11,31 @@ export interface ThemePresetDefinition {
 
 export const THEME_PRESETS: ThemePresetDefinition[] = [
   {
+    id: 'monochrome-minimalist',
+    name: 'Dark Minimalist',
+    tagline: 'Distraction-free pure black & white monochrome aesthetic',
+    category: 'Minimalist',
+    previewColors: ['#000000', '#ffffff', '#71717a'],
+    config: {
+      presetId: 'monochrome-minimalist',
+      mode: 'dark',
+      primaryColor: '#ffffff',
+      secondaryColor: '#a1a1aa',
+      customBackgroundColor: '#09090b',
+      borderRadius: 'md',
+      cardGlow: 'none',
+      glassmorphism: false,
+      cardStyle: 'solid',
+      contentScrimOpacity: 0.95,
+      backgroundPattern: 'none',
+      wallpaperOpacity: 0,
+      wallpaperBlur: 0,
+      fireIntensity: 'off',
+      fireEmberCount: 0,
+      showBaseFlames: false,
+    },
+  },
+  {
     id: 'obsidian-flame',
     name: 'Obsidian Flame',
     tagline: 'Mystic dark purple fire & floating combustion embers',
@@ -330,10 +355,10 @@ export const AMBIENT_SOUNDSCAPES = CURATED_AUDIO;
 
 export const DEFAULT_THEME_CONFIG: CustomThemeConfig = {
   ...THEME_PRESETS[0].config,
-  contentScrimOpacity: 0.75,
+  contentScrimOpacity: 0.95,
   cardStyle: 'solid',
-  videoOpacity: 0.55,
-  videoBlur: 1,
+  videoOpacity: 0,
+  videoBlur: 0,
   audioVolume: 0.5,
   zenMode: false,
 };

@@ -6,7 +6,7 @@ const STORAGE_KEYS = {
   NOTES: 'voice_notes_list_v1',
   CUSTOM_API_KEY: 'voice_notes_custom_api_key_v1',
   THEME: 'voice_notes_theme_v1',
-  THEME_CONFIG: 'kairo_theme_config_v2',
+  THEME_CONFIG: 'kairo_theme_config_v3',
 };
 
 export const CLASS_COLORS = [
@@ -340,9 +340,26 @@ export const StorageService = {
 
   getThemeConfig(): CustomThemeConfig {
     try {
-      const raw = localStorage.getItem(STORAGE_KEYS.THEME_CONFIG);
+      let raw = localStorage.getItem(STORAGE_KEYS.THEME_CONFIG);
+      if (!raw) {
+        // Check legacy key if any
+        const legacy = localStorage.getItem('kairo_theme_config_v2');
+        if (legacy) {
+          const legacyParsed = JSON.parse(legacy);
+          if (legacyParsed.presetId === 'obsidian-flame') {
+            this.saveThemeConfig(DEFAULT_THEME_CONFIG);
+            return { ...DEFAULT_THEME_CONFIG };
+          }
+          raw = legacy;
+        }
+      }
+
       if (raw) {
         const parsed = JSON.parse(raw);
+        if (parsed.presetId === 'obsidian-flame') {
+          this.saveThemeConfig(DEFAULT_THEME_CONFIG);
+          return { ...DEFAULT_THEME_CONFIG };
+        }
         const config: CustomThemeConfig = { ...DEFAULT_THEME_CONFIG, ...parsed };
 
         // Migrate legacy 403-blocked mixkit URLs to ultra-reliable local video assets

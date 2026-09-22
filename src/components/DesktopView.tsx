@@ -796,13 +796,6 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
                 />
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[10px] text-slate-400">
-                <div className="flex items-center justify-between">
-                  <span>Admin Passkey:</span>
-                  <code className="text-purple-300 font-mono font-bold">Kairo820</code>
-                </div>
-              </div>
-
               <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="button"

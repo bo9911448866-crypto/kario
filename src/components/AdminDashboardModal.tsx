@@ -520,16 +520,6 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ isOpen
                   </>
                 )}
               </button>
-
-              {/* Clear Credentials Guidance */}
-              <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-slate-800/80 text-[11px] text-slate-400 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-300">Admin Passkey:</span>
-                  <code className="text-purple-300 font-mono font-bold bg-purple-950/50 px-2 py-0.5 rounded border border-purple-800/40">
-                    Kairo820
-                  </code>
-                </div>
-              </div>
             </form>
           </div>
         ) : (

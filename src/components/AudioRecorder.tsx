@@ -12,8 +12,12 @@ import {
   X,
   Volume2,
   FileAudio,
+  CheckCircle2,
+  Tag,
+  GraduationCap,
+  Wand2,
 } from 'lucide-react';
-import { ClassItem, VoiceNote } from '../types';
+import { ClassItem, VoiceNote, NoteAnalysisResult } from '../types';
 import { AudioPlayer } from './AudioPlayer';
 import { GeminiService } from '../services/GeminiService';
 
@@ -43,6 +47,9 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   const [transcript, setTranscript] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
   const [isTranscribingWithGemini, setIsTranscribingWithGemini] = useState(false);
+  const [isAnalyzingWithAi, setIsAnalyzingWithAi] = useState(false);
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<NoteAnalysisResult | null>(null);
+  const [aiStatusSuccess, setAiStatusSuccess] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [speechApiSupported, setSpeechApiSupported] = useState(true);
 
@@ -376,6 +383,52 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
     }
   };
 
+  const handleAiAutoDetectAndPolish = async () => {
+    const rawText = transcript.trim() || interimTranscript.trim();
+    if (!rawText) {
+      setErrorMsg('Please record speech or enter notes first so AI can analyze the topics, grammar, and class.');
+      return;
+    }
+
+    setIsAnalyzingWithAi(true);
+    setErrorMsg(null);
+    setAiStatusSuccess(null);
+
+    try {
+      const result = await GeminiService.analyzeNote({
+        text: rawText,
+        classes: classes.map((c) => ({ id: c.id, name: c.name })),
+      });
+
+      if (result.title) {
+        setTitle(result.title);
+      }
+      if (result.cleanedTranscript) {
+        setTranscript(result.cleanedTranscript);
+        setInterimTranscript('');
+      }
+      if (result.classId && classes.some((c) => c.id === result.classId)) {
+        setSelectedClassId(result.classId);
+      }
+
+      setAiAnalysisResult(result);
+      const matchedClass = classes.find((c) => c.id === result.classId);
+      const msg = matchedClass
+        ? `Topics detected & mapped to "${matchedClass.name}". Title & grammar polished!`
+        : 'Topics detected & descriptive title generated. Grammar polished!';
+      setAiStatusSuccess(msg);
+    } catch (err: any) {
+      console.warn('AI analysis error:', err);
+      setErrorMsg(
+        err.message?.includes('GEMINI_API_KEY')
+          ? 'Gemini API key is required for auto-topic detection and class mapping.'
+          : err.message || 'Could not auto-analyze note with AI.'
+      );
+    } finally {
+      setIsAnalyzingWithAi(false);
+    }
+  };
+
   const handleSave = (shouldSummarize = false) => {
     if (!shouldSummarize && !title.trim()) {
       setErrorMsg('Please enter a note title.');
@@ -392,6 +445,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         audioUrl: recordedAudioUrl || undefined,
         audioMimeType: audioBlob?.type || 'audio/webm',
         durationSeconds: recordingTime || 1,
+        detectedTopics: aiAnalysisResult?.detectedTopics || undefined,
+        grammarNotes: aiAnalysisResult?.grammarNotes || undefined,
       },
       shouldSummarize
     );
@@ -408,24 +463,24 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   return (
     <div
       id="audio-recorder-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div
         id="audio-recorder-card"
-        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]"
+        className="w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 dark:border-zinc-800/80">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700">
               <Mic className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
                 Record Voice Note
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Capture classroom lectures, discussions, and study thoughts
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                AI captures, detects topics, fixes grammar & auto-classes your note
               </p>
             </div>
           </div>
@@ -433,7 +488,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
             id="close-recorder-button"
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             aria-label="Close recorder"
           >
             <X className="h-5 w-5" />
@@ -459,8 +514,43 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
             </div>
           )}
 
+          {/* AI Success Feedback Banner */}
+          {aiStatusSuccess && (
+            <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs animate-in fade-in slide-in-from-top-1 duration-200">
+              <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-zinc-900 dark:text-white" />
+              <div className="flex-1 space-y-1">
+                <p className="font-medium">{aiStatusSuccess}</p>
+                {aiAnalysisResult?.detectedTopics && aiAnalysisResult.detectedTopics.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {aiAnalysisResult.detectedTopics.map((top, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-[11px] font-medium text-zinc-800 dark:text-zinc-200"
+                      >
+                        <Tag className="h-2.5 w-2.5 text-zinc-400" />
+                        {top}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {aiAnalysisResult?.grammarNotes && (
+                  <p className="text-[11px] text-zinc-600 dark:text-zinc-400 pt-0.5">
+                    <span className="font-semibold">Grammar:</span> {aiAnalysisResult.grammarNotes}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setAiStatusSuccess(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Recording Canvas & Controls View */}
-          <div className="rounded-2xl bg-gradient-to-b from-slate-50 to-slate-100/70 dark:from-slate-900 dark:to-slate-950/80 p-6 border border-slate-200/80 dark:border-slate-800 text-center flex flex-col items-center justify-center">
+          <div className="rounded-2xl bg-zinc-50 dark:bg-zinc-950/60 p-6 border border-zinc-200/80 dark:border-zinc-800 text-center flex flex-col items-center justify-center">
             {/* Live Visualizer Canvas */}
             <div className="w-full h-20 flex items-center justify-center mb-3">
               {isRecording ? (
@@ -468,22 +558,22 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                   ref={canvasRef}
                   width={400}
                   height={80}
-                  className="w-full max-w-md h-20 rounded-lg"
+                  className="w-full max-w-md h-20 rounded-lg bg-zinc-900/50"
                 />
               ) : recordedAudioUrl ? (
                 <div className="w-full max-w-md">
                   <AudioPlayer src={recordedAudioUrl} duration={recordingTime} />
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-xs">
-                  <Volume2 className="h-8 w-8 mb-1 stroke-1 text-slate-300 dark:text-slate-600" />
+                <div className="flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 text-xs">
+                  <Volume2 className="h-8 w-8 mb-1 stroke-1 text-zinc-300 dark:text-zinc-600" />
                   <span>Ready to record voice audio</span>
                 </div>
               )}
             </div>
 
             {/* Timer */}
-            <div className="text-3xl font-mono font-bold tracking-tight text-slate-800 dark:text-slate-100 mb-4">
+            <div className="text-3xl font-mono font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mb-4">
               {formatTimer(recordingTime)}
             </div>
 
@@ -495,13 +585,13 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                     id="start-recording-btn"
                     type="button"
                     onClick={startRecording}
-                    className="flex items-center gap-2 px-6 py-3 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-95 transition-all cursor-pointer"
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 font-semibold shadow-md active:scale-95 transition-all cursor-pointer text-sm"
                   >
-                    <Mic className="h-5 w-5 animate-pulse" />
+                    <Mic className="h-4 w-4 animate-pulse" />
                     <span>Start Recording</span>
                   </button>
 
-                  <label className="flex items-center gap-2 px-4 py-3 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-medium cursor-pointer shadow-xs transition-colors">
+                  <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-200 text-xs font-medium cursor-pointer shadow-xs transition-colors">
                     <Upload className="h-4 w-4" />
                     <span>Upload Audio</span>
                     <input
@@ -521,7 +611,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                       id="resume-recording-btn"
                       type="button"
                       onClick={resumeRecording}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition-all cursor-pointer active:scale-95"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition-all cursor-pointer active:scale-95 text-xs"
                     >
                       <Play className="h-4 w-4 fill-current" />
                       <span>Resume</span>
@@ -531,7 +621,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                       id="pause-recording-btn"
                       type="button"
                       onClick={pauseRecording}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-medium shadow-sm transition-all cursor-pointer active:scale-95"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-medium shadow-sm transition-all cursor-pointer active:scale-95 text-xs"
                     >
                       <Pause className="h-4 w-4 fill-current" />
                       <span>Pause</span>
@@ -542,7 +632,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                     id="stop-recording-btn"
                     type="button"
                     onClick={stopRecording}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-medium shadow-sm transition-all cursor-pointer active:scale-95"
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold shadow-sm transition-all cursor-pointer active:scale-95 text-xs"
                   >
                     <Square className="h-4 w-4 fill-current" />
                     <span>Stop Recording</span>
@@ -560,7 +650,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                       setAudioBlob(null);
                       setRecordingTime(0);
                     }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium transition-colors cursor-pointer"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
                     <span>Re-record</span>
@@ -571,7 +661,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                     type="button"
                     onClick={() => handleGeminiTranscribe()}
                     disabled={isTranscribingWithGemini}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
                   >
                     {isTranscribingWithGemini ? (
                       <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -579,7 +669,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                       <Sparkles className="h-3.5 w-3.5" />
                     )}
                     <span>
-                      {isTranscribingWithGemini ? 'Transcribing with AI...' : 'Transcribe with Gemini'}
+                      {isTranscribingWithGemini ? 'Transcribing...' : 'AI Transcribe Audio'}
                     </span>
                   </button>
                 </div>
@@ -587,12 +677,44 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
             </div>
           </div>
 
+          {/* AI Detection & Auto-Classify Trigger Bar */}
+          <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
+                <Wand2 className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                  AI Auto-Classify & Grammar Polish
+                </p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  Detects key topics, fixes grammar & punctuation, assigns class, and names note
+                </p>
+              </div>
+            </div>
+
+            <button
+              id="ai-autoclassify-polish-btn"
+              type="button"
+              onClick={handleAiAutoDetectAndPolish}
+              disabled={isAnalyzingWithAi}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50 active:scale-95 shrink-0"
+            >
+              {isAnalyzingWithAi ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
+              <span>{isAnalyzingWithAi ? 'Detecting Topics & Class...' : 'Auto-Detect & Classify'}</span>
+            </button>
+          </div>
+
           {/* Form Fields: Title and Class Assignment */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label
                 htmlFor="note-title-input"
-                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                className="block text-xs font-semibold text-zinc-800 dark:text-zinc-200 mb-1.5"
               >
                 Note Title <span className="text-rose-500">*</span>
               </label>
@@ -602,14 +724,14 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                 placeholder="Leave blank to let AI auto-generate title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600"
               />
             </div>
 
             <div>
               <label
                 htmlFor="class-select"
-                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                className="block text-xs font-semibold text-zinc-800 dark:text-zinc-200 mb-1.5"
               >
                 Assign to Class / Subject
               </label>
@@ -617,7 +739,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                 id="class-select"
                 value={selectedClassId}
                 onChange={(e) => setSelectedClassId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 cursor-pointer"
               >
                 <option value="">✨ Auto-detect with AI</option>
                 {classes.map((cls) => (
@@ -634,11 +756,11 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
             <div className="flex items-center justify-between mb-1.5">
               <label
                 htmlFor="transcript-textarea"
-                className="block text-xs font-semibold text-slate-700 dark:text-slate-300"
+                className="block text-xs font-semibold text-zinc-800 dark:text-zinc-200"
               >
                 Transcript / Spoken Notes
               </label>
-              <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
                 {isRecording && (
                   <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                     <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -647,7 +769,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                 )}
                 {!speechApiSupported && (
                   <span className="text-amber-600 dark:text-amber-400">
-                    (Speech API not supported in this browser; click Gemini Transcribe after recording)
+                    (Speech API not supported; click AI Transcribe after recording)
                   </span>
                 )}
               </div>
@@ -657,22 +779,22 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
               <textarea
                 id="transcript-textarea"
                 rows={5}
-                placeholder="Spoken words will automatically transcribe here, or you can type directly..."
+                placeholder="Spoken words will automatically transcribe here, or you can paste/type directly..."
                 value={transcript + (interimTranscript ? ` ${interimTranscript}` : '')}
                 onChange={(e) => setTranscript(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-normal leading-relaxed"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 font-normal leading-relaxed"
               />
             </div>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
           <button
             id="cancel-recorder-btn"
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 text-sm font-medium transition-colors cursor-pointer"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-sm font-medium transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -682,9 +804,9 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
               id="save-note-btn"
               type="button"
               onClick={() => handleSave(false)}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-sm font-medium shadow-xs transition-colors cursor-pointer"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-200 text-sm font-medium shadow-xs transition-colors cursor-pointer"
             >
-              <Check className="h-4 w-4 text-emerald-600" />
+              <Check className="h-4 w-4 text-zinc-900 dark:text-white" />
               <span>Save Note</span>
             </button>
 
@@ -692,7 +814,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
               id="save-and-summarize-btn"
               type="button"
               onClick={() => handleSave(true)}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm shadow-indigo-500/20 active:scale-95 transition-all cursor-pointer"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-sm font-semibold shadow-sm active:scale-95 transition-all cursor-pointer"
             >
               <Sparkles className="h-4 w-4" />
               <span>AI Format & Summarize</span>

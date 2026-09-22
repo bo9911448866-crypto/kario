@@ -57,7 +57,13 @@ export const GeminiService = {
   async analyzeNote(params: {
     text: string;
     classes: { id: string; name: string }[];
-  }): Promise<{ title: string; cleanedTranscript: string; classId: string | null }> {
+  }): Promise<{
+    title: string;
+    cleanedTranscript: string;
+    classId: string | null;
+    detectedTopics: string[];
+    grammarNotes?: string;
+  }> {
     const { text, classes } = params;
 
     if (!text || text.trim().length === 0) {
@@ -97,6 +103,8 @@ export const GeminiService = {
       title: data.title,
       cleanedTranscript: data.cleanedTranscript,
       classId: data.classId,
+      detectedTopics: Array.isArray(data.detectedTopics) ? data.detectedTopics : [],
+      grammarNotes: data.grammarNotes || '',
     };
   },
 
@@ -154,6 +162,8 @@ export const GeminiService = {
       title: result.title,
       cleanedTranscript: result.cleanedTranscript,
       classId: result.classId,
+      detectedTopics: Array.isArray(result.detectedTopics) ? result.detectedTopics : [],
+      grammarNotes: result.grammarNotes || '',
     };
   },
 

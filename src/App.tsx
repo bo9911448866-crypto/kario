@@ -57,8 +57,8 @@ export default function App() {
     }
   });
 
-  // Lockscreen gate on application opening
-  const [isDesktopLocked, setIsDesktopLocked] = useState<boolean>(true);
+  // Lockscreen gate on application opening (unlocked by default for instant workspace access)
+  const [isDesktopLocked, setIsDesktopLocked] = useState<boolean>(false);
 
   // Recorder default class ID when launched from folder
   const [recorderDefaultClassId, setRecorderDefaultClassId] = useState<string | undefined>(undefined);
@@ -79,8 +79,8 @@ export default function App() {
     StorageService.getThemeConfig()
   );
 
-  // Intro animation state
-  const [showIntro, setShowIntro] = useState(true);
+  // Intro animation state (off by default for instant minimalist experience)
+  const [showIntro, setShowIntro] = useState(false);
 
   // Settings modal open state
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -200,7 +200,7 @@ export default function App() {
         ...prev,
         mode: nextMode,
         presetId: 'custom',
-        customBackgroundColor: nextMode === 'dark' ? '#07020d' : '#f8fafc',
+        customBackgroundColor: nextMode === 'dark' ? '#09090b' : '#f8fafc',
       };
     });
   };
@@ -297,9 +297,15 @@ export default function App() {
 
       if (summaryResult.title) updatePayload.title = summaryResult.title;
       if (summaryResult.cleanedTranscript) updatePayload.transcript = summaryResult.cleanedTranscript;
+      if (summaryResult.detectedTopics && summaryResult.detectedTopics.length > 0) {
+        updatePayload.detectedTopics = summaryResult.detectedTopics;
+      }
+      if (summaryResult.grammarNotes) {
+        updatePayload.grammarNotes = summaryResult.grammarNotes;
+      }
       if (summaryResult.classId) {
         // Verify classId exists
-        const exists = classes.some(c => c.id === summaryResult.classId);
+        const exists = classes.some((c) => c.id === summaryResult.classId);
         if (exists) updatePayload.classId = summaryResult.classId;
       }
 
@@ -479,7 +485,7 @@ export default function App() {
       style={{
         backgroundColor:
           themeConfig.customBackgroundColor ||
-          (themeConfig.mode === 'dark' ? '#07020d' : '#f8fafc'),
+          (themeConfig.mode === 'dark' ? '#09090b' : '#f8fafc'),
       }}
     >
       {/* Dynamic Background Atmosphere (Fire, Grid, Nebula, Waves, or Custom Wallpaper) */}
@@ -592,8 +598,8 @@ export default function App() {
                   aria-label="Overview statistics"
                   className="grid grid-cols-2 sm:grid-cols-4 gap-3"
                 >
-                  <div className="p-3.5 rounded-2xl bg-white dark:bg-[#120d24] border border-slate-200 dark:border-purple-950/80 shadow-xs flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                  <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xs flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200">
                       <FileText className="h-4 w-4" />
                     </div>
                     <div>
@@ -606,8 +612,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-white dark:bg-[#120d24] border border-slate-200 dark:border-purple-950/80 shadow-xs flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400">
+                  <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xs flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200">
                       <Sparkles className="h-4 w-4" />
                     </div>
                     <div>
@@ -620,8 +626,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-white dark:bg-[#120d24] border border-slate-200 dark:border-purple-950/80 shadow-xs flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+                  <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xs flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200">
                       <Clock className="h-4 w-4" />
                     </div>
                     <div>
@@ -634,8 +640,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-white dark:bg-[#120d24] border border-slate-200 dark:border-purple-950/80 shadow-xs flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+                  <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xs flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200">
                       <Folder className="h-4 w-4" />
                     </div>
                     <div>
@@ -664,7 +670,7 @@ export default function App() {
                 />
 
                 {/* Current View Header */}
-                <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-white dark:bg-[#120d24] border border-slate-200 dark:border-purple-950/80 shadow-xs flex-wrap gap-2">
+                <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xs flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
                       {selectedClass ? `${selectedClass.name} Notes` : 'All Lecture Notes'}
@@ -688,9 +694,9 @@ export default function App() {
                         setSettingsTab('themes');
                         setCurrentView('settings');
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-purple-900/50 bg-slate-50 dark:bg-[#181330] text-slate-700 dark:text-purple-300 hover:border-purple-400 hover:text-purple-600 dark:hover:text-purple-200 transition-all shadow-xs cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:border-zinc-400 hover:text-black dark:hover:text-white transition-all shadow-xs cursor-pointer"
                     >
-                      <Palette className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                      <Palette className="h-3.5 w-3.5 text-slate-700 dark:text-zinc-300" />
                       <span>Theme Studio</span>
                     </button>
                   </div>
@@ -724,7 +730,7 @@ export default function App() {
                   /* Empty State */
                   <div
                     id="empty-notes-view"
-                    className="rounded-2xl border-2 border-dashed border-slate-200 dark:border-purple-950/80 p-12 text-center flex flex-col items-center justify-center space-y-4 bg-white/50 dark:bg-[#120d24]/60"
+                    className="rounded-2xl border-2 border-dashed border-slate-200 dark:border-zinc-800 p-12 text-center flex flex-col items-center justify-center space-y-4 bg-white/50 dark:bg-zinc-900/60"
                   >
                     <div className="h-12 w-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                       <Mic className="h-6 w-6" />
