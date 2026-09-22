@@ -53,12 +53,60 @@ export const GeminiService = {
     return { hasConfiguredKey: false, source: 'none' };
   },
 
+
+  async analyzeNote(params: {
+    text: string;
+    classes: { id: string; name: string }[];
+  }): Promise<{ title: string; cleanedTranscript: string; classId: string | null }> {
+    const { text, classes } = params;
+
+    if (!text || text.trim().length === 0) {
+      throw new Error('Note text is empty. Cannot analyze.');
+    }
+
+    const customKey = StorageService.getUserApiKey();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (customKey) {
+      headers['x-gemini-api-key'] = customKey;
+    }
+
+    const response = await fetch('/api/gemini/analyze', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        text,
+        classes,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      if (data.missingKey) {
+        throw new Error(
+          'Gemini API key is required. Please add your key in the settings panel.'
+        );
+      }
+      const cleanError = sanitizeErrorMessage(data, 'Failed to analyze note with Gemini.');
+      throw new Error(cleanError);
+    }
+
+    return {
+      title: data.title,
+      cleanedTranscript: data.cleanedTranscript,
+      classId: data.classId,
+    };
+  },
+
   async summarizeNote(params: {
     text: string;
     title?: string;
     className?: string;
+    classes?: { id: string; name: string }[];
   }): Promise<NoteSummary> {
-    const { text, title, className } = params;
+    const { text, title, className, classes } = params;
 
     if (!text || text.trim().length === 0) {
       throw new Error('Note text is empty. Please record audio or add notes before summarizing.');
@@ -80,6 +128,7 @@ export const GeminiService = {
         text,
         title,
         className,
+        classes,
       }),
     });
 
@@ -102,6 +151,9 @@ export const GeminiService = {
       actionItems: Array.isArray(result.actionItems) ? result.actionItems : [],
       tags: Array.isArray(result.tags) ? result.tags : [className || 'General'],
       generatedAt: new Date().toISOString(),
+      title: result.title,
+      cleanedTranscript: result.cleanedTranscript,
+      classId: result.classId,
     };
   },
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import {
   Sparkles,
   ChevronDown,
@@ -119,12 +120,16 @@ export const NoteCard: React.FC<NoteCardProps> = ({
   };
 
   return (
-    <article
+    <motion.article
+      layout
+      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", damping: 25, stiffness: 200 }}
       id={`note-card-${note.id}`}
-      className={`rounded-2xl border transition-all overflow-hidden flex flex-col ${
+      className={`rounded-2xl border transition-all overflow-hidden flex flex-col group ${
         cardStyle === 'frosted'
-          ? 'border-white/20 dark:border-purple-900/50 bg-white/95 dark:bg-[#120d24]/95 backdrop-blur-xl shadow-lg'
-          : 'border-slate-200 dark:border-purple-950/80 bg-white dark:bg-[#120d24] shadow-md dark:shadow-2xl dark:shadow-black/70'
+          ? 'border-white/20 dark:border-purple-900/50 bg-white/95 dark:bg-[#120d24]/95 backdrop-blur-xl shadow-lg hover:shadow-xl hover:shadow-purple-900/20'
+          : 'border-slate-200 dark:border-purple-950/80 bg-white dark:bg-[#120d24] shadow-md dark:shadow-2xl dark:shadow-black/70 hover:shadow-xl hover:shadow-purple-900/20'
       }`}
     >
       {/* Note Header */}
@@ -515,6 +520,6 @@ export const NoteCard: React.FC<NoteCardProps> = ({
           )}
         </div>
       </div>
-    </article>
+    </motion.article>
   );
 };

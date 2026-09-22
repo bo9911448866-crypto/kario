@@ -240,9 +240,85 @@ app.get("/api/gemini/status", (_req, res) => {
 });
 
 // Summarize endpoint with fallback across models
+
+// Note analysis endpoint (topic detection, grammar correction, class mapping)
+app.post("/api/gemini/analyze", async (req, res) => {
+  try {
+    const { text, classes } = req.body;
+    const clientProvidedKey = req.headers["x-gemini-api-key"] as string | undefined;
+
+    if (!text || typeof text !== "string" || text.trim().length === 0) {
+      return res.status(400).json({ error: "Note text content is required for analysis." });
+    }
+
+    const ai = getGeminiClient(clientProvidedKey);
+    if (!ai) {
+      return res.status(400).json({
+        error: "Gemini API key is not configured.",
+        missingKey: true,
+      });
+    }
+
+    const classesList = Array.isArray(classes) && classes.length > 0 ? classes.map((c: any) => `ID: ${c.id} | Name: ${c.name}`).join("\n") : "None";
+
+    const prompt = `Analyze this spoken voice note transcript.
+1. Correct the grammar, punctuation, and formatting to make it highly readable without losing any of the original meaning.
+2. Generate a concise, descriptive title based on the topics.
+3. Suggest the most appropriate class ID from the provided list, or output null if it doesn't fit any existing class.
+
+Existing Classes:
+${classesList}
+
+Transcript:
+"""
+${text}
+"""`;
+
+    const candidateModels = ["gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-flash-latest"];
+
+    const response = await generateWithFallback(ai, candidateModels, {
+      contents: prompt,
+      config: {
+        systemInstruction: "You are an expert academic note processor. Fix grammar, generate a title, and map to the most appropriate class ID.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING, description: "A concise, descriptive title for the note (max 6 words)." },
+            cleanedTranscript: { type: Type.STRING, description: "The original transcript with corrected grammar, punctuation, and clear paragraph formatting." },
+            classId: { type: Type.STRING, description: "The exact ID of the best matching class from the provided list, or null if no match.", nullable: true }
+          },
+          required: ["title", "cleanedTranscript"]
+        }
+      }
+    });
+
+    const rawText = response.text?.trim();
+    if (!rawText) return res.status(500).json({ error: "Received empty response from Gemini." });
+
+    const cleanedJson = cleanJsonResponse(rawText);
+    const parsedData = JSON.parse(cleanedJson);
+
+    return res.json({
+      success: true,
+      title: parsedData.title,
+      cleanedTranscript: parsedData.cleanedTranscript,
+      classId: parsedData.classId || null
+    });
+
+  } catch (err: any) {
+    const errorInfo = parseGeminiError(err);
+    console.error("Note Analysis API Error:", err.message || err);
+    return res.status(errorInfo.statusCode).json({
+      error: errorInfo.message,
+      isHighDemand: errorInfo.isHighDemand,
+    });
+  }
+});
+
 app.post("/api/gemini/summarize", async (req, res) => {
   try {
-    const { text, title, className } = req.body;
+    const { text, title, className, classes } = req.body;
     const clientProvidedKey = req.headers["x-gemini-api-key"] as string | undefined;
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
@@ -257,6 +333,8 @@ app.post("/api/gemini/summarize", async (req, res) => {
       });
     }
 
+    const classesList = Array.isArray(classes) && classes.length > 0 ? classes.map((c: any) => `ID: ${c.id} | Name: ${c.name}`).join("\n") : "None";
+
     const prompt = `Analyze this lecture/class voice note transcript.
 Note Title: ${title || "Untitled"}
 Class/Category: ${className || "General"}
@@ -266,7 +344,14 @@ Transcript:
 ${text}
 """
 
-Please produce a concise, high-yield structured summary suitable for students and learners.`;
+Available Classes (for mapping):
+${classesList}
+
+Please do the following:
+1. Produce a concise, high-yield structured summary suitable for students and learners.
+2. Correct the grammar, punctuation, and formatting of the transcript to make it highly readable without losing any of the original meaning.
+3. Suggest a concise, descriptive title for the note based on the topics.
+4. Suggest the most appropriate class ID from the provided list, or output null if it doesn't fit any existing class.`;
 
     const candidateModels = ["gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-flash-latest"];
 
@@ -274,7 +359,7 @@ Please produce a concise, high-yield structured summary suitable for students an
       contents: prompt,
       config: {
         systemInstruction:
-          "You are an expert academic note summarizer. Create clear, factual, high-retention summaries with structured key bullet points, takeaways/action items, and relevant subject tags.",
+          "You are an expert academic note summarizer. Create clear, factual, high-retention summaries with structured key bullet points, takeaways/action items, and relevant subject tags. Additionally, clean up the transcript, generate a smart title, and map it to the correct class.",
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -304,8 +389,21 @@ Please produce a concise, high-yield structured summary suitable for students an
               },
               description: "3 to 6 high-level academic keywords or topical tags.",
             },
+            title: {
+              type: Type.STRING,
+              description: "A concise, descriptive title for the note (max 6 words)."
+            },
+            cleanedTranscript: {
+              type: Type.STRING,
+              description: "The original transcript with corrected grammar, punctuation, and clear paragraph formatting."
+            },
+            classId: {
+              type: Type.STRING,
+              description: "The exact ID of the best matching class from the provided list, or null if no match.",
+              nullable: true
+            }
           },
-          required: ["summary", "keyPoints", "actionItems", "tags"],
+          required: ["summary", "keyPoints", "actionItems", "tags", "title", "cleanedTranscript"],
         },
       },
     });
@@ -321,28 +419,27 @@ Please produce a concise, high-yield structured summary suitable for students an
       parsedData = JSON.parse(cleanedJson);
     } catch {
       parsedData = {
-        summary: rawText,
+        summary: "Could not parse AI response. " + rawText,
         keyPoints: [],
         actionItems: [],
-        tags: [],
+        tags: ["Error"],
+        title: title || "Untitled Note",
+        cleanedTranscript: text,
+        classId: null
       };
     }
 
-    return res.json({
-      success: true,
-      data: parsedData,
-    });
-  } catch (error: any) {
-    console.error("Gemini summarize error:", error);
-    const parsed = parseGeminiError(error);
-    return res.status(parsed.statusCode).json({
-      error: parsed.message,
-      isHighDemand: parsed.isHighDemand,
+    return res.json({ data: parsedData });
+  } catch (err: any) {
+    const errorInfo = parseGeminiError(err);
+    console.error("Summarize API Error:", err.message || err);
+    return res.status(errorInfo.statusCode).json({
+      error: errorInfo.message,
+      isHighDemand: errorInfo.isHighDemand,
     });
   }
 });
 
-// Audio transcription endpoint using Gemini 3.5 transcribe with fallback
 app.post("/api/gemini/transcribe", async (req, res) => {
   try {
     const { audioBase64, mimeType = "audio/webm" } = req.body;
@@ -896,13 +993,13 @@ function extractKey(req: express.Request, names: string[]): string {
 }
 
 function isAuthorizedOwner(req: express.Request): boolean {
-  const provided = extractKey(req, ["x-owner-key", "ownerKey", "ownerCode", "x-admin-key", "key"]);
+  const provided = extractKey(req, ["x-owner-key", "x-owner-code", "ownerKey", "ownerCode", "x-admin-key", "key"]);
   return Boolean(provided && VALID_OWNER_KEYS.has(provided));
 }
 
 function isAuthorizedAdmin(req: express.Request): boolean {
   if (isAuthorizedOwner(req)) return true;
-  const provided = extractKey(req, ["x-admin-key", "key", "adminKey"]);
+  const provided = extractKey(req, ["x-admin-key", "x-owner-key", "x-owner-code", "key", "adminKey"]);
   return Boolean(provided && (VALID_ADMIN_KEYS.has(provided) || VALID_OWNER_KEYS.has(provided)));
 }
 

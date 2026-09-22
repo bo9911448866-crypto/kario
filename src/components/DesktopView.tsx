@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Folder,
   FolderPlus,
@@ -385,12 +386,6 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
             <span className="hidden sm:inline">Classic</span>
           </button>
 
-          {/* Live Clock & Date */}
-          <div className="flex items-center gap-1.5 font-mono text-[11px] text-purple-200">
-            <span className="hidden md:inline text-purple-400">{clockDate}</span>
-            <span>{clockTime}</span>
-          </div>
-
           {/* User Profile Pill / Menu */}
           <div className="relative">
             <button
@@ -497,139 +492,94 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
           setIsUserMenuOpen(false);
         }}
       >
-        {/* Desktop Icons Grid */}
-        <div className="grid grid-flow-col auto-cols-[90px] sm:auto-cols-[100px] grid-rows-[repeat(auto-fill,105px)] gap-y-4 gap-x-2 w-max max-w-full h-full overflow-y-auto z-10 relative select-none">
-          {/* 1. Core App: Voice Recorder */}
-          <div
-            onClick={() => onOpenRecorder()}
-            className="flex flex-col items-center justify-center p-2 rounded-xl group hover:bg-purple-500/20 active:bg-purple-500/30 transition-all cursor-pointer text-center w-[90px] sm:w-[100px]"
-            title="Double-click to open Voice Recorder"
-          >
-            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-purple-700 via-purple-600 to-indigo-500 p-0.5 shadow-lg shadow-purple-900/40 group-hover:scale-105 group-hover:shadow-purple-600/50 transition-all flex items-center justify-center text-white">
-              <Mic className="h-6 w-6 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" />
-            </div>
-            <span className="mt-1.5 text-[11px] font-medium text-white group-hover:text-purple-200 tracking-tight line-clamp-2 px-1 rounded drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-              Recorder
-            </span>
+        {/* Floating Desktop Widget (Clock & Stats) */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+          className="absolute top-8 right-8 w-64 rounded-3xl p-5 bg-white/5 dark:bg-black/20 backdrop-blur-3xl border border-white/10 shadow-2xl pointer-events-none select-none z-0"
+        >
+          <div className="flex flex-col gap-1">
+            <h1 className="text-4xl font-extrabold tracking-tighter text-slate-800 dark:text-white drop-shadow-md">
+              {clockTime}
+            </h1>
+            <p className="text-sm font-medium text-slate-500 dark:text-purple-200/70 tracking-wide uppercase">
+              {clockDate}
+            </p>
           </div>
-
-          {/* 2. Core App: All Notes Explorer */}
-          <div
-            onClick={() => openWindow('all-notes')}
-            className="flex flex-col items-center justify-center p-2 rounded-xl group hover:bg-purple-500/20 active:bg-purple-500/30 transition-all cursor-pointer text-center w-[90px] sm:w-[100px]"
-            title="All Notes & Transcripts"
-          >
-            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-indigo-700 via-indigo-600 to-blue-500 p-0.5 shadow-lg shadow-indigo-900/40 group-hover:scale-105 transition-all flex items-center justify-center text-white">
-              <FileText className="h-6 w-6 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" />
+          <div className="mt-4 pt-4 border-t border-white/10 flex flex-col gap-3">
+            <div className="flex items-center justify-between text-xs font-medium text-slate-600 dark:text-purple-200/60">
+              <span>Classes</span>
+              <span className="text-slate-800 dark:text-white">{classes.length}</span>
             </div>
-            <span className="mt-1.5 text-[11px] font-medium text-white group-hover:text-purple-200 tracking-tight line-clamp-2 px-1 rounded drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-              All Notes
-            </span>
-          </div>
-
-          {/* 3. Core App: Settings */}
-          <div
-            onClick={() => openWindow('settings')}
-            className="flex flex-col items-center justify-center p-2 rounded-xl group hover:bg-purple-500/20 active:bg-purple-500/30 transition-all cursor-pointer text-center w-[90px] sm:w-[100px]"
-            title="System Preferences & Cloud Settings"
-          >
-            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-slate-700 via-slate-600 to-zinc-500 p-0.5 shadow-lg shadow-slate-900/40 group-hover:scale-105 transition-all flex items-center justify-center text-white">
-              <Settings className="h-6 w-6 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" />
+            <div className="flex items-center justify-between text-xs font-medium text-slate-600 dark:text-purple-200/60">
+              <span>Total Notes</span>
+              <span className="text-slate-800 dark:text-white">{notes.length}</span>
             </div>
-            <span className="mt-1.5 text-[11px] font-medium text-white group-hover:text-purple-200 tracking-tight line-clamp-2 px-1 rounded drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-              Settings
-            </span>
           </div>
+        </motion.div>
 
-          {/* 4. Core App: Ambient Soundscapes */}
-          <div
-            onClick={() => openWindow('ambient')}
-            className="flex flex-col items-center justify-center p-2 rounded-xl group hover:bg-purple-500/20 active:bg-purple-500/30 transition-all cursor-pointer text-center w-[90px] sm:w-[100px]"
-            title="Study Audio & Ambient Sounds"
-          >
-            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-fuchsia-700 via-fuchsia-600 to-rose-500 p-0.5 shadow-lg shadow-fuchsia-900/40 group-hover:scale-105 transition-all flex items-center justify-center text-white">
-              <Music className="h-6 w-6 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" />
-            </div>
-            <span className="mt-1.5 text-[11px] font-medium text-white group-hover:text-purple-200 tracking-tight line-clamp-2 px-1 rounded drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-              Soundscapes
-            </span>
-          </div>
-
-          {/* 5. Core App: Master Admin Portal App */}
-          <div
-            onClick={handleAdminAppClick}
-            className="flex flex-col items-center justify-center p-2 rounded-xl group hover:bg-purple-500/20 active:bg-purple-500/30 transition-all cursor-pointer text-center w-[90px] sm:w-[100px]"
-            title={
-              isAdminUnlocked || AdminService.getSavedKey()
-                ? 'Master Admin Dashboard'
-                : 'Click to authenticate Admin Portal'
-            }
-          >
-            <div
-              className={`w-13 h-13 rounded-2xl p-0.5 shadow-lg group-hover:scale-105 transition-all flex items-center justify-center text-white relative ${
-                isAdminUnlocked || AdminService.getSavedKey()
-                  ? 'bg-gradient-to-tr from-purple-800 via-violet-600 to-amber-400 shadow-purple-600/50 ring-2 ring-purple-400/50'
-                  : 'bg-gradient-to-tr from-slate-800 via-purple-950 to-slate-900 border border-purple-900/60 shadow-black/40'
-              }`}
-            >
-              <Shield className="h-6 w-6 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" />
-              {!(isAdminUnlocked || AdminService.getSavedKey()) && (
-                <div className="absolute -bottom-1 -right-1 p-1 rounded-full bg-purple-950 border border-purple-600 text-purple-300">
-                  <Lock className="h-2.5 w-2.5" />
-                </div>
-              )}
-            </div>
-            <span className="mt-1.5 text-[11px] font-medium text-white group-hover:text-purple-200 tracking-tight line-clamp-2 px-1 rounded drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-              Admin Portal
-            </span>
-          </div>
-
-          {/* 6. CLASS FOLDERS ON DESKTOP */}
-          {classes.map((classItem) => {
-            const count = notes.filter((n) => n.classId === classItem.id).length;
-            return (
-              <div
-                key={classItem.id}
-                onClick={() => handleOpenClassFolder(classItem)}
-                className="flex flex-col items-center justify-center p-2 rounded-xl group hover:bg-purple-500/20 active:bg-purple-500/30 transition-all cursor-pointer text-center w-[90px] sm:w-[100px]"
-                title={`Open Folder: ${classItem.name} (${count} notes)`}
-              >
-                {/* Desktop Folder Graphic */}
-                <div className="relative w-13 h-13 flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <Folder
-                    className="h-12 w-12 drop-shadow-[0_3px_6px_rgba(0,0,0,0.5)] transition-colors"
-                    style={{
-                      color: classItem.color || '#a855f7',
-                      fill: classItem.color ? `${classItem.color}33` : '#a855f733',
-                    }}
-                  />
-                  {/* Note count badge */}
-                  <span className="absolute bottom-1 right-0 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-slate-950/80 text-white border border-white/20 shadow-xs">
-                    {count}
+        {/* Desktop Icons Grid (Only Folders Now) */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="grid grid-flow-col auto-cols-[90px] sm:auto-cols-[100px] grid-rows-[repeat(auto-fill,105px)] gap-y-4 gap-x-2 w-max max-w-full h-[calc(100%-100px)] overflow-y-auto z-10 relative select-none"
+        >
+          {/* CLASS FOLDERS ON DESKTOP */}
+          <AnimatePresence>
+            {classes.map((classItem, idx) => {
+              const count = notes.filter((n) => n.classId === classItem.id).length;
+              return (
+                <motion.div
+                  key={classItem.id}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: idx * 0.05 }}
+                  onClick={() => handleOpenClassFolder(classItem)}
+                  className="flex flex-col items-center justify-center p-2 rounded-xl group hover:bg-purple-500/20 active:bg-purple-500/30 transition-all cursor-pointer text-center w-[90px] sm:w-[100px]"
+                  title={`Open Folder: ${classItem.name} (${count} notes)`}
+                >
+                  {/* Desktop Folder Graphic */}
+                  <div className="relative w-13 h-13 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <Folder
+                      className="h-12 w-12 drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] transition-colors"
+                      style={{
+                        color: classItem.color || '#a855f7',
+                        fill: classItem.color ? `${classItem.color}33` : '#a855f733',
+                      }}
+                    />
+                    {/* Note count badge */}
+                    <span className="absolute bottom-1 right-0 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-slate-950/90 text-white border border-white/20 shadow-md backdrop-blur-md">
+                      {count}
+                    </span>
+                  </div>
+                  {/* Folder Title */}
+                  <span className="mt-2 text-[11px] font-semibold text-slate-800 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-200 tracking-tight line-clamp-2 px-1.5 py-0.5 rounded bg-white/40 dark:bg-black/40 backdrop-blur-sm drop-shadow-sm max-w-full break-words">
+                    {classItem.name}
                   </span>
-                </div>
-                {/* Folder Title */}
-                <span className="mt-1.5 text-[11px] font-semibold text-white group-hover:text-purple-200 tracking-tight line-clamp-2 px-1 rounded drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] max-w-full break-words">
-                  {classItem.name}
-                </span>
-              </div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
 
-          {/* 7. Shortcut: New Class Folder */}
-          <div
+          {/* Shortcut: New Class Folder */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: classes.length * 0.05 }}
             onClick={() => onOpenClassModal()}
             className="flex flex-col items-center justify-center p-2 rounded-xl group hover:bg-purple-500/20 active:bg-purple-500/30 transition-all cursor-pointer text-center w-[90px] sm:w-[100px]"
             title="Create a new class folder on desktop"
           >
-            <div className="w-13 h-13 rounded-2xl border-2 border-dashed border-purple-400/60 hover:border-purple-300 bg-purple-950/20 hover:bg-purple-950/40 p-0.5 group-hover:scale-105 transition-all flex items-center justify-center text-purple-300">
+            <div className="w-13 h-13 rounded-2xl border-2 border-dashed border-purple-400/50 hover:border-purple-400 bg-purple-950/10 hover:bg-purple-950/30 p-0.5 group-hover:scale-110 transition-all duration-300 flex items-center justify-center text-purple-600 dark:text-purple-300 backdrop-blur-md">
               <FolderPlus className="h-6 w-6" />
             </div>
-            <span className="mt-1.5 text-[11px] font-medium text-purple-200 tracking-tight line-clamp-2 px-1 rounded drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+            <span className="mt-2 text-[11px] font-medium text-slate-700 dark:text-purple-200 tracking-tight line-clamp-2 px-1.5 py-0.5 rounded bg-white/40 dark:bg-black/40 backdrop-blur-sm drop-shadow-sm">
               + New Folder
             </span>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* 3. WINDOWS (CLASS FOLDER, SETTINGS, ALL NOTES, AMBIENT, ADMIN) */}
 
@@ -875,116 +825,157 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
       )}
 
       {/* 5. BOTTOM DESKTOP DOCK (macOS Style Floating Glass Dock) */}
-      <footer className="h-16 w-full flex items-center justify-center p-2 z-30 shrink-0 pointer-events-none">
-        <div className="pointer-events-auto flex items-center gap-2 px-3 py-2 rounded-2xl bg-slate-900/80 dark:bg-[#0e0821]/80 border border-purple-900/60 shadow-2xl backdrop-blur-xl">
+      <footer className="absolute bottom-6 w-full flex items-center justify-center p-2 z-30 pointer-events-none">
+        <motion.div 
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: "spring", damping: 20, stiffness: 300, delay: 0.1 }}
+          className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-3xl bg-white/5 dark:bg-[#070312]/50 border border-white/20 dark:border-white/10 shadow-2xl backdrop-blur-3xl"
+        >
           {/* Recorder */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.2, y: -10 }}
+            whileTap={{ scale: 0.95 }}
             type="button"
             onClick={() => onOpenRecorder()}
             title="Voice Recorder"
-            className="p-2.5 rounded-xl hover:bg-purple-800/40 text-white hover:scale-110 active:scale-95 transition-all cursor-pointer relative group"
+            className="relative group focus:outline-none flex flex-col items-center"
           >
-            <Mic className="h-5 w-5 text-purple-300" />
-            <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-slate-950 text-white text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-purple-500 to-indigo-400 p-0.5 shadow-lg shadow-purple-900/50 flex items-center justify-center text-white ring-1 ring-white/30 group-hover:shadow-purple-500/50 transition-shadow">
+              <Mic className="h-6 w-6 drop-shadow-md" />
+            </div>
+            {openWindows['recorder']?.isOpen && (
+              <span className="absolute -bottom-2.5 h-1 w-1 rounded-full bg-white/70" />
+            )}
+            <span className="absolute -top-10 px-3 py-1.5 rounded-lg bg-black/80 text-white text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl backdrop-blur-md border border-white/10">
               Record Lecture
             </span>
-          </button>
+          </motion.button>
 
           {/* All Notes */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.2, y: -10 }}
+            whileTap={{ scale: 0.95 }}
             type="button"
             onClick={() => openWindow('all-notes')}
             title="All Notes"
-            className="p-2.5 rounded-xl hover:bg-purple-800/40 text-white hover:scale-110 active:scale-95 transition-all cursor-pointer relative group"
+            className="relative group focus:outline-none flex flex-col items-center"
           >
-            <FileText className="h-5 w-5 text-indigo-300" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-blue-500 to-cyan-400 p-0.5 shadow-lg shadow-blue-900/50 flex items-center justify-center text-white ring-1 ring-white/30 group-hover:shadow-blue-500/50 transition-shadow">
+              <FileText className="h-6 w-6 drop-shadow-md" />
+            </div>
             {openWindows['all-notes']?.isOpen && (
-              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-indigo-400" />
+              <span className="absolute -bottom-2.5 h-1 w-1 rounded-full bg-white/70" />
             )}
-            <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-slate-950 text-white text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <span className="absolute -top-10 px-3 py-1.5 rounded-lg bg-black/80 text-white text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl backdrop-blur-md border border-white/10">
               Notes Library
             </span>
-          </button>
+          </motion.button>
 
           {/* New Class Folder */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.2, y: -10 }}
+            whileTap={{ scale: 0.95 }}
             type="button"
             onClick={() => onOpenClassModal()}
             title="New Class Folder"
-            className="p-2.5 rounded-xl hover:bg-purple-800/40 text-white hover:scale-110 active:scale-95 transition-all cursor-pointer relative group"
+            className="relative group focus:outline-none flex flex-col items-center"
           >
-            <FolderPlus className="h-5 w-5 text-purple-300" />
-            <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-slate-950 text-white text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 p-0.5 shadow-lg shadow-emerald-900/50 flex items-center justify-center text-white ring-1 ring-white/30 group-hover:shadow-emerald-500/50 transition-shadow">
+              <FolderPlus className="h-6 w-6 drop-shadow-md" />
+            </div>
+            <span className="absolute -top-10 px-3 py-1.5 rounded-lg bg-black/80 text-white text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl backdrop-blur-md border border-white/10">
               New Folder
             </span>
-          </button>
+          </motion.button>
 
           {/* Soundscapes */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.2, y: -10 }}
+            whileTap={{ scale: 0.95 }}
             type="button"
             onClick={() => openWindow('ambient')}
             title="Soundscapes"
-            className="p-2.5 rounded-xl hover:bg-purple-800/40 text-white hover:scale-110 active:scale-95 transition-all cursor-pointer relative group"
+            className="relative group focus:outline-none flex flex-col items-center"
           >
-            <Music className="h-5 w-5 text-fuchsia-300" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-fuchsia-600 via-pink-500 to-rose-400 p-0.5 shadow-lg shadow-fuchsia-900/50 flex items-center justify-center text-white ring-1 ring-white/30 group-hover:shadow-fuchsia-500/50 transition-shadow">
+              <Music className="h-6 w-6 drop-shadow-md" />
+            </div>
             {openWindows['ambient']?.isOpen && (
-              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-fuchsia-400" />
+              <span className="absolute -bottom-2.5 h-1 w-1 rounded-full bg-white/70" />
             )}
-            <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-slate-950 text-white text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <span className="absolute -top-10 px-3 py-1.5 rounded-lg bg-black/80 text-white text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl backdrop-blur-md border border-white/10">
               Soundscapes
             </span>
-          </button>
+          </motion.button>
 
           {/* Settings */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.2, y: -10 }}
+            whileTap={{ scale: 0.95 }}
             type="button"
             onClick={() => openWindow('settings')}
             title="Settings"
-            className="p-2.5 rounded-xl hover:bg-purple-800/40 text-white hover:scale-110 active:scale-95 transition-all cursor-pointer relative group"
+            className="relative group focus:outline-none flex flex-col items-center"
           >
-            <Settings className="h-5 w-5 text-slate-300" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-600 via-slate-500 to-gray-400 p-0.5 shadow-lg shadow-slate-900/50 flex items-center justify-center text-white ring-1 ring-white/30 group-hover:shadow-slate-500/50 transition-shadow">
+              <Settings className="h-6 w-6 drop-shadow-md" />
+            </div>
             {openWindows['settings']?.isOpen && (
-              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-purple-400" />
+              <span className="absolute -bottom-2.5 h-1 w-1 rounded-full bg-white/70" />
             )}
-            <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-slate-950 text-white text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <span className="absolute -top-10 px-3 py-1.5 rounded-lg bg-black/80 text-white text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl backdrop-blur-md border border-white/10">
               Settings App
             </span>
-          </button>
+          </motion.button>
 
           {/* Admin App */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.2, y: -10 }}
+            whileTap={{ scale: 0.95 }}
             type="button"
             onClick={handleAdminAppClick}
             title="Master Admin Portal"
-            className="p-2.5 rounded-xl hover:bg-purple-800/40 text-white hover:scale-110 active:scale-95 transition-all cursor-pointer relative group"
+            className="relative group focus:outline-none flex flex-col items-center"
           >
-            <Shield
-              className={`h-5 w-5 ${
-                isAdminUnlocked || AdminService.getSavedKey()
-                  ? 'text-amber-400 animate-pulse'
-                  : 'text-purple-400'
-              }`}
-            />
-            <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-slate-950 text-white text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <div className={`w-12 h-12 rounded-2xl p-0.5 shadow-lg flex items-center justify-center text-white ring-1 ring-white/30 transition-shadow ${
+              isAdminUnlocked || AdminService.getSavedKey()
+                ? 'bg-gradient-to-tr from-amber-600 via-orange-500 to-yellow-400 shadow-amber-900/50 group-hover:shadow-amber-500/50'
+                : 'bg-gradient-to-tr from-zinc-800 via-zinc-700 to-zinc-600 shadow-black/50 group-hover:shadow-zinc-500/50'
+            }`}>
+              <Shield className={`h-6 w-6 drop-shadow-md ${
+                isAdminUnlocked || AdminService.getSavedKey() ? 'animate-pulse text-white' : 'text-zinc-300'
+              }`} />
+              {!(isAdminUnlocked || AdminService.getSavedKey()) && (
+                <div className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-zinc-900 border border-zinc-600 text-zinc-400">
+                  <Lock className="h-3 w-3" />
+                </div>
+              )}
+            </div>
+            <span className="absolute -top-10 px-3 py-1.5 rounded-lg bg-black/80 text-white text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl backdrop-blur-md border border-white/10">
               Master Admin
             </span>
-          </button>
+          </motion.button>
 
-          <div className="w-px h-6 bg-purple-900/60 mx-1" />
+          <div className="w-px h-10 bg-white/20 mx-1 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.2)]" />
 
           {/* Lock Desktop */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.2, y: -10 }}
+            whileTap={{ scale: 0.95 }}
             type="button"
             onClick={onLockDesktop}
             title="Lock Desktop"
-            className="p-2.5 rounded-xl hover:bg-purple-800/40 text-purple-300 hover:text-white hover:scale-110 active:scale-95 transition-all cursor-pointer relative group"
+            className="relative group focus:outline-none flex flex-col items-center"
           >
-            <Lock className="h-4 w-4" />
-            <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-slate-950 text-white text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 via-rose-500 to-red-400 p-0.5 shadow-lg shadow-rose-900/50 flex items-center justify-center text-white ring-1 ring-white/30 group-hover:shadow-rose-500/50 transition-shadow">
+              <Lock className="h-6 w-6 drop-shadow-md" />
+            </div>
+            <span className="absolute -top-10 px-3 py-1.5 rounded-lg bg-black/80 text-white text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl backdrop-blur-md border border-white/10">
               Lock Desktop
             </span>
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </footer>
     </div>
   );

@@ -15,6 +15,9 @@ export interface NoteSummary {
   actionItems: string[];
   tags: string[];
   generatedAt: string;
+  title?: string;
+  cleanedTranscript?: string;
+  classId?: string | null;
 }
 
 export interface VoiceNote {

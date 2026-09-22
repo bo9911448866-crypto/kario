@@ -286,13 +286,24 @@ export default function App() {
         text: note.transcript,
         title: note.title,
         className: targetClass?.name || 'General',
+        classes,
       });
 
-      const updated = StorageService.updateNote(note.id, {
+      const updatePayload: any = {
         summary: summaryResult,
         isSummarizing: false,
         error: undefined,
-      });
+      };
+
+      if (summaryResult.title) updatePayload.title = summaryResult.title;
+      if (summaryResult.cleanedTranscript) updatePayload.transcript = summaryResult.cleanedTranscript;
+      if (summaryResult.classId) {
+        // Verify classId exists
+        const exists = classes.some(c => c.id === summaryResult.classId);
+        if (exists) updatePayload.classId = summaryResult.classId;
+      }
+
+      const updated = StorageService.updateNote(note.id, updatePayload);
       setNotes(updated);
 
       // Automatic cloud sync

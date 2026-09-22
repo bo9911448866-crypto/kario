@@ -39,7 +39,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
 
   // Form / Content state
   const [title, setTitle] = useState('');
-  const [selectedClassId, setSelectedClassId] = useState(defaultClassId || classes[0]?.id || '');
+  const [selectedClassId, setSelectedClassId] = useState(defaultClassId || '');
   const [transcript, setTranscript] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
   const [isTranscribingWithGemini, setIsTranscribingWithGemini] = useState(false);
@@ -377,7 +377,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   };
 
   const handleSave = (shouldSummarize = false) => {
-    if (!title.trim()) {
+    if (!shouldSummarize && !title.trim()) {
       setErrorMsg('Please enter a note title.');
       return;
     }
@@ -386,7 +386,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
 
     onSaveNote(
       {
-        title: title.trim(),
+        title: title.trim() || 'AI Processing...',
         classId: selectedClassId,
         transcript: finalTranscript,
         audioUrl: recordedAudioUrl || undefined,
@@ -599,7 +599,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
               <input
                 id="note-title-input"
                 type="text"
-                placeholder="e.g., Photosynthesis & Light Reactions"
+                placeholder="Leave blank to let AI auto-generate title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -619,6 +619,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                 onChange={(e) => setSelectedClassId(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
               >
+                <option value="">✨ Auto-detect with AI</option>
                 {classes.map((cls) => (
                   <option key={cls.id} value={cls.id}>
                     {cls.name}
@@ -694,7 +695,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
               className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm shadow-indigo-500/20 active:scale-95 transition-all cursor-pointer"
             >
               <Sparkles className="h-4 w-4" />
-              <span>Save & Summarize with AI</span>
+              <span>AI Format & Summarize</span>
             </button>
           </div>
         </div>
